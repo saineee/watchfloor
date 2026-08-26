@@ -50,3 +50,7 @@ async def login_user(request: Request, user: UserLogin, db: AsyncSession = Depen
     request.session["user_id"] = db_user.id
     return db_user
 
+@router.post("/logout", status_code=200)
+async def logout_user(request: Request):
+    request.session.clear()
+    return {"message": "Successfully logged out"}
