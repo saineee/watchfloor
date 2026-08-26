@@ -2,8 +2,7 @@ fastapi[standard]==0.141.1
 SQLAlchemy==2.0.52
 psycopg[binary]==3.3.4
 alembic==1.19.1
-python-dotenv==1.2.3
-pydantic==2.13.4
+pydantic[email]==2.13.4
 argon2-cffi==25.1.0
 itsdangerous==2.2.0
 pydantic-settings==2.15.0

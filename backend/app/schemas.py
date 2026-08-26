@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import Annotated
 from datetime import datetime
 from app.models import Severity, AlertStatus
 
@@ -28,3 +29,13 @@ class AlertUpdate(BaseModel):
     status: AlertStatus | None = None
     severity: Severity | None = None
     summary: str | None = None
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: Annotated[str, Field(min_length=12)]
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: EmailStr
+    created_at: datetime
