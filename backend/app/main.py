@@ -5,8 +5,12 @@ from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import AlertRead, AlertCreate, AlertUpdate
 from app.models import Alert
+from starlette.middleware.sessions import SessionMiddleware
+from app.config import settings
 
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, max_age=3600,
+                   same_site="lax", https_only=settings.cookie_secure)
 
 @app.get("/healthz")
 def health():
