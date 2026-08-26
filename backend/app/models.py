@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import enum
-from sqlalchemy import func, DateTime
+from sqlalchemy import func, DateTime, Index, text
 from datetime import datetime
 
 class Base(DeclarativeBase):
@@ -35,6 +35,14 @@ class Alert(Base):
     summary: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     location: Mapped[str | None]
+
+    __table_args__ = (
+        Index('uq_open_alert_device_error',
+              "device_name",
+              "error_type",
+              unique=True,
+              postgresql_where=text("status != 'resolved'")),
+    )
 
 class User(Base):
     __tablename__ = "users"
