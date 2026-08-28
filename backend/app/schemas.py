@@ -23,7 +23,7 @@ class AlertRead(AlertBase):
     severity: Severity | None = None
     summary: str | None = None
     occurrence_count: int
-    last_occurrence: datetime | None = None
+    last_occurrence: datetime
 
 class AlertUpdate(BaseModel):
     status: AlertStatus | None = None

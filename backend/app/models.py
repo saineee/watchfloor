@@ -29,7 +29,7 @@ class Alert(Base):
     device_last_available: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     occurrence_count: Mapped[int] = mapped_column(default=1)
     device_state: Mapped[str]
-    last_occurrence: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_occurrence: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     severity: Mapped[Severity | None]
     description: Mapped[str]
     summary: Mapped[str | None]

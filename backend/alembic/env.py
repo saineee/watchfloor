@@ -42,6 +42,7 @@ def run_migrations_offline() -> None:
     url = config.get_main_option()
     context.configure(
         url=settings.database_url,
+        compare_server_default=True,
         target_metadata=Base.metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -66,7 +67,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, compare_server_default=True
         )
 
         with context.begin_transaction():
