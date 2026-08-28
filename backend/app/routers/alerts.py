@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 from typing import Annotated
+
+from sqlalchemy.exc import IntegrityError
+
 from sqlalchemy import select
 from app.database import get_db
 from app.models import Alert, AlertStatus
@@ -20,10 +23,19 @@ async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), r
     if not existing_alert:
         db_alert = Alert(**alert_data)
         db.add(db_alert)
-        await db.commit()
-        await db.refresh(db_alert)
-        response.status_code = 201
-        return db_alert
+        try:
+            await db.commit()
+            await db.refresh(db_alert)
+            response.status_code = 201
+            return db_alert
+        # IntegrityError may occur because a concurrent request inserted the same
+        # device and error type between select and commit, and db constraint caught it, falls through to the bump below on purpose
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(stmt)
+            existing_alert = result.scalar_one_or_none()
+            if not existing_alert:
+                raise HTTPException(status_code=409, detail="Alert resolved during race, retry")
 
     existing_alert.occurrence_count += 1
     existing_alert.last_occurrence = datetime.now(timezone.utc)
