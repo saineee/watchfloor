@@ -6,3 +6,4 @@ pydantic[email]==2.13.4
 argon2-cffi==25.1.0
 itsdangerous==2.2.0
 pydantic-settings==2.15.0
+anthropic==1.2.0

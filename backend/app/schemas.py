@@ -45,9 +45,12 @@ class UserLogin(BaseModel):
     password: str
 
 class TriageResult(BaseModel):
+    model_config=ConfigDict(extra="forbid")
     severity: Severity = Field(description="P1 is service outage affecting multiple customers;"
                                            " P2 is an outage for a single customer with significant business impact, "
                                            "or degradation affecting multiple; P3 is degradation affecting a single customer, "
                                            "needs escalation to a higher team; P4 is an alert or incident with no immediate escalation, "
-                                           "goes to a queue; P5 is a service or info request")
-    summary: str = Field(max_length=200, description="Summary of the problem containing the device, error type, problem, and whether the issue is impacting others.")
+                                           "goes to a queue; P5 is a service or info request. When the number of affected customers cannot be determined from the alert, assume higher priority. "
+                                           "More than 1 affected customer is automatic priority 1 when paired with hard down, use this information for other priorities. Occurrence count alone does not raise priority.")
+    summary: str = Field(max_length=300, description="Summary of the problem containing the device, error type, problem, and whether the issue is impacting others. "
+                                                     "Response should be one line and 300 characters or less.")
