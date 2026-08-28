@@ -1,3 +1,4 @@
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -8,6 +9,7 @@ class Settings(BaseSettings):
     database_url: str
     secret_key: str
     cookie_secure: bool = True
+    anthropic_api_key: SecretStr
 
     model_config = SettingsConfigDict(
         env_file=env_file,

@@ -43,3 +43,11 @@ class UserRead(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class TriageResult(BaseModel):
+    severity: Severity = Field(description="P1 is service outage affecting multiple customers;"
+                                           " P2 is an outage for a single customer with significant business impact, "
+                                           "or degradation affecting multiple; P3 is degradation affecting a single customer, "
+                                           "needs escalation to a higher team; P4 is an alert or incident with no immediate escalation, "
+                                           "goes to a queue; P5 is a service or info request")
+    summary: str = Field(max_length=200, description="Summary of the problem containing the device, error type, problem, and whether the issue is impacting others.")
