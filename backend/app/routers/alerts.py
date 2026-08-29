@@ -1,15 +1,18 @@
 from datetime import datetime, timezone
 from typing import Annotated
-
+import anthropic
+import pydantic
 from app.llm import hash_input, triage
 from sqlalchemy.exc import IntegrityError
-
 from sqlalchemy import select
 from app.database import get_db
 from app.models import Alert, AlertStatus
 from fastapi import Depends, Query, HTTPException, APIRouter, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import AlertCreate, AlertRead, AlertUpdate
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -79,7 +82,24 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Alert not found")
     fingerprint = hash_input(alert)
     if fingerprint != alert.triage_source_hash:
-        result = await triage(alert)
+        try:
+            result = await triage(alert)
+        except anthropic.RateLimitError:
+            logger.exception("Rate limit exceeded for alert:%s", alert_id)
+            raise HTTPException(status_code=503, detail="Rate limit exceeded")
+        except anthropic.InternalServerError:
+            logger.exception("Internal server error for alert:%s", alert_id)
+            raise HTTPException(status_code=503, detail="Internal server error")
+        except anthropic.APIStatusError:
+            logger.exception("Api status error for alert:%s", alert_id)
+            raise HTTPException(status_code=502, detail="API status error")
+        except anthropic.APIConnectionError:
+            logger.exception("Connection error for alert:%s", alert_id)
+            raise HTTPException(status_code=503, detail="Connection error")
+        except pydantic.ValidationError:
+            logger.exception("Validation error for alert:%s", alert_id)
+            raise HTTPException(status_code=502, detail="Validation error")
+
         alert.summary = result.summary
         alert.severity = result.severity
         alert.triage_source_hash = fingerprint

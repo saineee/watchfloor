@@ -7,7 +7,8 @@ from app.schemas import TriageResult
 DELIMITER = "\x1f"
 
 client = AsyncAnthropic(
-    api_key=settings.anthropic_api_key.get_secret_value()
+    api_key=settings.anthropic_api_key.get_secret_value(),
+    timeout=15, max_retries=2
 )
 
 def _triage_fields(alert: Alert):
