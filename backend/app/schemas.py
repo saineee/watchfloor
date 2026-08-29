@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Annotated
 from datetime import datetime
 from app.models import Severity, AlertStatus
@@ -26,9 +26,22 @@ class AlertRead(AlertBase):
     last_occurrence: datetime
 
 class AlertUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     status: AlertStatus | None = None
+    description: str | None = None
+    location: str | None = None
+    device_state: str | None = None
+    ip_address: str | None = None
+    device_last_available: datetime | None = None
     severity: Severity | None = None
     summary: str | None = None
+
+    @field_validator("status", "description", "device_state", "ip_address")
+    @classmethod
+    def validate_fields(cls, v):
+        if v is None:
+            raise ValueError("field cannot be set to null")
+        return v
 
 class UserCreate(BaseModel):
     email: EmailStr

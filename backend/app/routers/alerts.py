@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
+from app.llm import hash_input, triage
 from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy import select
@@ -69,4 +70,19 @@ async def update_alert(alert_id: int, alert_update: AlertUpdate, db: AsyncSessio
 
     await db.commit()
     await db.refresh(alert)
+    return alert
+
+@router.post("/{alert_id}/triage", response_model=AlertRead)
+async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
+    alert = await db.get(Alert, alert_id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    fingerprint = hash_input(alert)
+    if fingerprint != alert.triage_source_hash:
+        result = await triage(alert)
+        alert.summary = result.summary
+        alert.severity = result.severity
+        alert.triage_source_hash = fingerprint
+        await db.commit()
+        await db.refresh(alert)
     return alert
