@@ -14,6 +14,8 @@ url = make_url(settings.database_url)
 BASE_DIR = Path(__file__).resolve().parent.parent
 alembic_ini = BASE_DIR / "alembic.ini"
 
+test_user = {"email": "test@gmail.com", "password": "1234891231k12"}
+
 if not url.database.endswith("_test"):
     raise ValueError(f"refusing to run against {url.database}, the name must end in _test")
 
@@ -37,3 +39,17 @@ async def client():
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
 
         yield client
+
+@pytest.fixture(scope="function", autouse=False)
+async def auth_client(client):
+    response = await client.post(
+        "/auth/register",
+        json=test_user
+    )
+    assert response.status_code == 201
+    response = await client.post(
+        "/auth/login",
+        json=test_user
+    )
+    assert response.status_code == 200
+    return client
