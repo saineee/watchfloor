@@ -61,3 +61,16 @@ async def test_get_alert_401_logged_out(client):
         "/alerts"
     )
     assert response.status_code == 401
+
+async def test_register_twice_409(client):
+    response = await client.post(
+        "/auth/register",
+        json=test_user
+    )
+    assert response.status_code == 201
+
+    response = await client.post(
+        "/auth/register",
+        json=test_user
+    )
+    assert response.status_code == 409
