@@ -1,3 +1,7 @@
+from sqlalchemy import text
+
+from app.database import engine
+
 test_user = {"email": "test@gmail.com", "password": "1234891231k12"}
 
 async def test_register_return_email_id(client):
@@ -74,3 +78,12 @@ async def test_register_twice_409(client):
         json=test_user
     )
     assert response.status_code == 409
+
+async def test_del_user_test_guarded_route_return_401(auth_client):
+    response = await auth_client.get("/alerts")
+    assert response.status_code == 200
+    async with engine.begin() as conn:
+        await conn.execute(text("DELETE FROM users WHERE email = :e"), {"e": test_user["email"]})
+    response = await auth_client.get("/alerts")
+    assert response.status_code == 401
+
