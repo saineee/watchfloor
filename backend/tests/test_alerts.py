@@ -56,3 +56,55 @@ async def test_create_alert_resolve_new_id(auth_client):
 
     response = await auth_client.get("/alerts")
     assert len(response.json()) == 2
+
+async def test_patch_none_on_null_field_return_422(auth_client):
+    response = await auth_client.post(
+        "/alerts",
+        json=test_alert
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"description": None},
+    )
+    assert response.status_code == 422
+
+async def test_patch_location_set_200(auth_client):
+    response = await auth_client.post(
+        "/alerts",
+        json=test_alert
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"location": None},
+    )
+    assert response.status_code == 200
+    assert response.json()["location"] is None
+
+async def test_patch_extra_field_return_422(auth_client):
+    response = await auth_client.post(
+        "/alerts",
+        json=test_alert
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"unknown": "unknown"},
+    )
+    assert response.status_code == 422
+
+async def test_get_alert_not_exist_return_404(auth_client):
+    response = await auth_client.get(
+        "/alerts/999999",
+    )
+    assert response.status_code == 404
+
+async def test_get_alert_list_manual_limit_return_422(auth_client):
+    response = await auth_client.get(
+        "/alerts?limit=101"
+    )
+    assert response.status_code == 422
