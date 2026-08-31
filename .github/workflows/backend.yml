@@ -1,0 +1,45 @@
+name: Backend Pipeline
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: watchfloordb_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m compileall . -q
+      - run: pip install -r requirements.txt && pip install -r requirements-dev.txt
+      - run: pytest
+        env:
+          DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/watchfloordb_test
+          SECRET_KEY: 12839123hljm1h23ljjasdlk12
+          ANTHROPIC_API_KEY: ahdsjfh123129831239
