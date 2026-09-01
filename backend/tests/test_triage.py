@@ -71,3 +71,24 @@ async def test_triage_not_refresh_on_occur_bump(auth_client, alert_payload, mock
         f"/alerts/{alert_id}/triage"
     )
     assert mock_triage.call_count == 1
+
+async def test_triage_404_on_missing_alert(auth_client, alert_payload, mock_triage):
+    response = await auth_client.post(
+        "/alerts",
+        json=alert_payload
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+    response = await auth_client.post(
+        f"/alerts/{alert_id}/triage"
+    )
+    assert mock_triage.call_count == 1
+    assert response.json()["summary"] == "test summary"
+    assert response.json()["severity"] == "P1"
+
+    response =  await auth_client.post(
+        "/alerts/11213/triage"
+    )
+    assert mock_triage.call_count == 1
+    assert response.status_code == 404
+
