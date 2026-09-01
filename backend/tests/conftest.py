@@ -1,4 +1,7 @@
 from pathlib import Path
+from app.schemas import TriageResult
+from app.models import Severity
+from unittest.mock import AsyncMock
 import httpx
 from app.main import app
 from sqlalchemy import text
@@ -53,3 +56,22 @@ async def auth_client(client):
     )
     assert response.status_code == 200
     return client
+
+@pytest.fixture(scope="function", autouse=False)
+def mock_triage(monkeypatch):
+    mock_result = TriageResult(severity=Severity.p1, summary="test summary")
+    mock_async_func = AsyncMock(return_value=mock_result)
+    monkeypatch.setattr("app.routers.alerts.triage", mock_async_func)
+    return mock_async_func
+
+@pytest.fixture(scope="function", autouse=False)
+def alert_payload():
+    return {
+    "error_type": "ESX Host down",
+    "device_name": "dallas.esx.host03",
+    "ip_address": "172.16.17.32",
+    "description": "alarm: host connection and power state red",
+    "device_state": "down",
+    "location": "dallas",
+    "device_last_available": None}
+
