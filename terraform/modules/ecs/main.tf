@@ -32,9 +32,12 @@ resource "aws_iam_role_policy" "exec_role_ssm_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action   = "ssm:GetParameters"
-      Effect   = "Allow"
-      Resource = var.database_url_ssm_arn
+      Action = "ssm:GetParameters"
+      Effect = "Allow"
+      Resource = [
+        var.database_url_ssm_arn,
+        var.secret_key_ssm_arn
+      ]
     }]
   })
 }
@@ -55,6 +58,10 @@ resource "aws_ecs_task_definition" "main" {
     secrets = [{
       name      = "DATABASE_URL"
       valueFrom = var.database_url_ssm_arn
+      },
+      {
+        name      = "SECRET_KEY"
+        valueFrom = var.secret_key_ssm_arn
     }]
     environment = [
       {
@@ -110,4 +117,25 @@ resource "aws_iam_role_policy" "ecs_task_anthropic_policy" {
       Resource = "*"
     }]
   })
+}
+
+resource "aws_ecs_service" "main" {
+  name            = "${var.name_prefix}-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.main.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = var.private_subnet_ids
+    security_groups  = [var.security_group_id]
+    assign_public_ip = false
+  }
+  load_balancer {
+    target_group_arn = var.target_group_arn
+    container_port   = var.container_port
+    container_name   = "${var.name_prefix}-api"
+  }
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
 }

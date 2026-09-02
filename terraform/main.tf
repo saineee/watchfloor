@@ -36,4 +36,17 @@ module "ecs" {
   anthropic_organization_id    = var.anthropic_organization_id
   anthropic_service_account_id = var.anthropic_service_account_id
   anthropic_workspace_id       = var.anthropic_workspace_id
+  depends_on                   = [module.alb]
+  secret_key_ssm_arn           = aws_ssm_parameter.fastapi_secret_key.arn
+}
+
+resource "random_password" "secret_key" {
+  length  = 32
+  special = true
+}
+
+resource "aws_ssm_parameter" "fastapi_secret_key" {
+  name  = "/${var.name_prefix}/SECRET_KEY"
+  type  = "SecureString"
+  value = random_password.secret_key.result
 }

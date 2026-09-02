@@ -22,7 +22,3 @@ resource "aws_ecr_lifecycle_policy" "main" {
     }]
   })
 }
-
-output "repository_url" {
-  value = aws_ecr_repository.main.repository_url
-}

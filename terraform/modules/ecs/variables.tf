@@ -52,3 +52,7 @@ variable "anthropic_service_account_id" {
 variable "anthropic_workspace_id" {
   type = string
 }
+
+variable "secret_key_ssm_arn" {
+  type = string
+}
