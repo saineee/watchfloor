@@ -11,6 +11,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # dummy hash computed once at import because hashing is roughly 30ms per call, 2 hashes per request would reintroduce the same issue
 DUMMY_HASH = hash_password("not_a_real_password")
 
+
 @router.post("/register", response_model=UserRead, status_code=201)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     user_data = user.model_dump()
@@ -26,6 +27,7 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
     await db.refresh(db_user)
     return db_user
+
 
 @router.post("/login", response_model=UserRead, status_code=200)
 async def login_user(request: Request, user: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -49,6 +51,7 @@ async def login_user(request: Request, user: UserLogin, db: AsyncSession = Depen
 
     request.session["user_id"] = db_user.id
     return db_user
+
 
 @router.post("/logout", status_code=200)
 async def logout_user(request: Request):

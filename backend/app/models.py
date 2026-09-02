@@ -3,14 +3,17 @@ import enum
 from sqlalchemy import func, DateTime, Index, text, String
 from datetime import datetime
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class AlertStatus(enum.Enum):
     new = "new"
     in_progress = "in_progress"
     escalated = "escalated"
     resolved = "resolved"
+
 
 class Severity(enum.Enum):
     p1 = "P1"
@@ -19,9 +22,10 @@ class Severity(enum.Enum):
     p4 = "P4"
     p5 = "P5"
 
+
 class Alert(Base):
     __tablename__ = "alerts"
-    id : Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     error_type: Mapped[str]
     device_name: Mapped[str]
     status: Mapped[AlertStatus] = mapped_column(default=AlertStatus.new)
@@ -45,10 +49,10 @@ class Alert(Base):
               postgresql_where=text("status != 'resolved'")),
     )
 
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(unique=True, index=True)
     password_hash: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-

@@ -3,6 +3,7 @@ from typing import Annotated
 from datetime import datetime
 from app.models import Severity, AlertStatus
 
+
 class AlertBase(BaseModel):
     error_type: str
     device_name: str
@@ -12,8 +13,10 @@ class AlertBase(BaseModel):
     location: str | None = None
     device_last_available: datetime | None = None
 
+
 class AlertCreate(AlertBase):
     pass
+
 
 class AlertRead(AlertBase):
     model_config = ConfigDict(from_attributes=True)
@@ -24,6 +27,7 @@ class AlertRead(AlertBase):
     summary: str | None = None
     occurrence_count: int
     last_occurrence: datetime
+
 
 class AlertUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -43,9 +47,11 @@ class AlertUpdate(BaseModel):
             raise ValueError("field cannot be set to null")
         return v
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: Annotated[str, Field(min_length=12)]
+
 
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -53,17 +59,20 @@ class UserRead(BaseModel):
     email: EmailStr
     created_at: datetime
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+
 class TriageResult(BaseModel):
-    model_config=ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid")
     severity: Severity = Field(description="P1 is service outage affecting multiple customers;"
                                            " P2 is an outage for a single customer with significant business impact, "
                                            "or degradation affecting multiple; P3 is degradation affecting a single customer, "
                                            "needs escalation to a higher team; P4 is an alert or incident with no immediate escalation, "
                                            "goes to a queue; P5 is a service or info request. When the number of affected customers cannot be determined from the alert, assume higher priority. "
                                            "More than 1 affected customer is automatic priority 1 when paired with hard down, use this information for other priorities. Occurrence count alone does not raise priority.")
-    summary: str = Field(max_length=300, description="Summary of the problem containing the device, error type, problem, and whether the issue is impacting others. "
-                                                     "Response should be one line and 300 characters or less.")
+    summary: str = Field(max_length=300,
+                         description="Summary of the problem containing the device, error type, problem, and whether the issue is impacting others. "
+                                     "Response should be one line and 300 characters or less.")

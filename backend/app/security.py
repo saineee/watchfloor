@@ -4,13 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from fastapi import Request, Depends, HTTPException
-from starlette import status
+from fastapi import Request, Depends, HTTPException, status
 
 hasher = PasswordHasher()
 
+
 def hash_password(password):
     return hasher.hash(password)
+
 
 def verify_password(password, hashed_password):
     try:
@@ -18,6 +19,7 @@ def verify_password(password, hashed_password):
         return True
     except VerifyMismatchError:
         return False
+
 
 async def require_user(request: Request, db: AsyncSession = Depends(get_db)):
     user_id = request.session.get("user_id")

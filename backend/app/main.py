@@ -11,6 +11,7 @@ app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, max_age=36
 app.include_router(alerts_router, dependencies=[Depends(require_user)])
 app.include_router(auth_router)
 
+
 @app.get("/healthz")
 def health():
     return {"status": "ok"}
