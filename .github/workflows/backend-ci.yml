@@ -1,16 +1,16 @@
-name: Backend Pipeline
+name: Backend CI Pipeline
 
 on:
   push:
     paths:
       - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - '.github/workflows/backend-ci.yml'
     branches:
       - main
   pull_request:
     paths:
       - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - '.github/workflows/backend-ci.yml'
 jobs:
   test:
     defaults:
