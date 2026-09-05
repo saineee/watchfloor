@@ -44,3 +44,6 @@ jobs:
           cluster: 'watchfloor-cluster'
           service: 'watchfloor-service'
           wait-for-service-stability: true
+          run-task: true
+          wait-for-task-stopped: true
+          run-task-container-overrides: '[ { "name": "watchfloor-api", "command": [ "alembic", "upgrade", "head" ] } ]'

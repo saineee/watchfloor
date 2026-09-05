@@ -58,6 +58,21 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
       Effect   = "Allow"
       Resource = aws_ecr_repository.main.arn
       Sid      = "ecrCollection"
+      }, {
+      Action = "ecs:RunTask"
+      Condition = {
+        StringEquals = {
+          "ecs:cluster" : module.ecs.cluster_arn
+        }
+      }
+      Effect   = "Allow"
+      Resource = "${module.ecs.task_definition_arn}:*"
+      Sid      = "watchfloorRunTask"
+      }, {
+      Action   = "ecs:DescribeTasks"
+      Effect   = "Allow"
+      Resource = "${module.ecs.task_arn_prefix}/*"
+      Sid      = "watchfloorDescTasks"
     }]
   })
   role = aws_iam_role.github_deploy.name
