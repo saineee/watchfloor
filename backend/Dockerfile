@@ -15,6 +15,9 @@ COPY alembic.ini .
 
 RUN useradd user -m
 
+COPY --chown=user entrypoint.sh .
+RUN chmod 500 entrypoint.sh
+
 USER user
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]
