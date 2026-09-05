@@ -38,6 +38,12 @@ jobs:
           task-definition: task-definition.json
           container-name: 'watchfloor-api'
           image: ${{ steps.build.outputs.image }}
+      - run: |
+          echo "subnets=$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets|join(`,`,@)' --output text)">> $GITHUB_OUTPUT
+          echo "sgroups=$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups|join(`,`,@)' --output text)" >> $GITHUB_OUTPUT
+        id: vpc
       - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render.outputs.task-definition }}
@@ -46,4 +52,6 @@ jobs:
           wait-for-service-stability: true
           run-task: true
           wait-for-task-stopped: true
+          run-task-subnets: ${{ steps.vpc.outputs.subnets }}
+          run-task-security-groups: ${{ steps.vpc.outputs.sgroups }}
           run-task-container-overrides: '[ { "name": "watchfloor-api", "command": [ "alembic", "upgrade", "head" ] } ]'
