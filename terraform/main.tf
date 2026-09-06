@@ -50,3 +50,9 @@ resource "aws_ssm_parameter" "fastapi_secret_key" {
   type  = "SecureString"
   value = random_password.secret_key.result
 }
+
+module "cloudfront" {
+  source       = "./modules/cloudfront"
+  alb_dns_name = module.alb.alb_dns_name
+  name_prefix  = var.name_prefix
+}

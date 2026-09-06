@@ -17,3 +17,7 @@ output "repository_url" {
 output "repository_arn" {
   value = aws_ecr_repository.main.arn
 }
+
+output "distribution_domain_name" {
+  value = module.cloudfront.distribution_domain_name
+}
