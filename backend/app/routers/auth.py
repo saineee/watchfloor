@@ -1,5 +1,4 @@
 from datetime import timezone, datetime, timedelta
-
 from app.config import settings
 from app.models import Session
 from sqlalchemy import select
@@ -8,14 +7,13 @@ from app.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.schemas import UserCreate, UserRead, UserLogin
-from app.security import hash_password, verify_password
-from fastapi import APIRouter, Depends, HTTPException, Response
+from app.security import hash_password, verify_password, MAX_AGE, COOKIE
+from fastapi import APIRouter, Depends, HTTPException, Response, Request
 import secrets
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 # dummy hash computed once at import because hashing is roughly 30ms per call, 2 hashes per request would reintroduce the same issue
 DUMMY_HASH = hash_password("not_a_real_password")
-MAX_AGE = 3600
 
 
 @router.post("/register", response_model=UserRead, status_code=201)
@@ -64,11 +62,19 @@ async def login_user(response: Response, user: UserLogin, db: AsyncSession = Dep
         user_id=db_user.id)
     db.add(db_session)
     await db.commit()
-    response.set_cookie(key="session", value=db_session.token, httponly=True, secure=settings.cookie_secure,
+    response.set_cookie(key=COOKIE, value=session_token, httponly=True, secure=settings.cookie_secure,
                         max_age=MAX_AGE, samesite="Lax")
     return db_user
 
 
 @router.post("/logout", status_code=200)
-async def logout_user(response: Response):
+async def logout_user(response: Response, request: Request, db: AsyncSession = Depends(get_db)):
+    response.delete_cookie(key=COOKIE)
+    cookie = request.cookies.get(COOKIE)
+    stmt = select(Session).where(Session.token == cookie)
+    result = await db.execute(stmt)
+    db_session = result.scalar_one_or_none()
+    if db_session:
+        await db.delete(db_session)
+        await db.commit()
     return {"message": "Successfully logged out"}
