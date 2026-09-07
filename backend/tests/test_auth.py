@@ -1,19 +1,21 @@
 from sqlalchemy import text
-
+from app.security import COOKIE
 from app.database import engine
 
 test_user = {"email": "test@gmail.com", "password": "1234891231k12"}
 
+
 async def test_register_return_email_id(client):
     response = await client.post(
         "/auth/register",
-        json=test_user,)
+        json=test_user, )
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == "test@gmail.com"
     assert "id" in data
     assert "password" not in data
     assert "password_hash" not in data
+
 
 async def test_two_failed_login_return_same_body(client):
     response = await client.post(
@@ -36,6 +38,7 @@ async def test_two_failed_login_return_same_body(client):
     data_two = response.json()
 
     assert data_one == data_two
+
 
 async def test_get_alert_401_logged_out(client):
     response = await client.post(
@@ -66,6 +69,7 @@ async def test_get_alert_401_logged_out(client):
     )
     assert response.status_code == 401
 
+
 async def test_register_twice_409(client):
     response = await client.post(
         "/auth/register",
@@ -79,6 +83,7 @@ async def test_register_twice_409(client):
     )
     assert response.status_code == 409
 
+
 async def test_del_user_test_guarded_route_return_401(auth_client):
     response = await auth_client.get("/alerts")
     assert response.status_code == 200
@@ -87,3 +92,14 @@ async def test_del_user_test_guarded_route_return_401(auth_client):
     response = await auth_client.get("/alerts")
     assert response.status_code == 401
 
+
+async def test_try_use_cookie_after_logout(auth_client):
+    token = auth_client.cookies.get(COOKIE)
+    response = await auth_client.get("/alerts", headers={"Cookie": f"{COOKIE}={token}"})
+    assert response.status_code == 200
+    response = await auth_client.post(
+        "/auth/logout")
+    assert response.status_code == 200
+    response = await auth_client.get(
+        "/alerts", headers={"Cookie": f"{COOKIE}={token}"})
+    assert response.status_code == 401
