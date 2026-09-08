@@ -9,18 +9,20 @@ function App() {
         <>
             <h1>watchfloor</h1>
             <ul>
+                {alerts.map((alert) => (
+                    <AlertRow key={alert.id} alert={alert} />
+                ))}
             </ul>
         </>
     )
 }
 
-function AlertRow() {
+function AlertRow({ alert }) {
 
     return (
-        {alerts.map((alert) => (
-                <li key={alert.id}>{alert.id} - {alert.device_name} - {alert.severity} - {alert.status}</li>
-            ))
-        }
+        <li>
+            {alert.id} - {alert.device_name} - {alert.severity} - {alert.status}
+        </li>
     )
 }
 
