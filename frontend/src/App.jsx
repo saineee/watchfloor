@@ -23,6 +23,10 @@ function App() {
     return (
         <>
             <h1>watchfloor</h1>
+            <input value={email} onChange={e => setEmail(e.target.value)}
+                   placeholder="email"/>
+            <input value={password} onChange={p => setPassword(p.target.value)}
+                   placeholder="password"/>
             <ul>
                 {alerts.map((alert) => (
                     <AlertRow key={alert.id} alert={alert}/>
