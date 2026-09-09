@@ -77,3 +77,49 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
   })
   role = aws_iam_role.github_deploy.name
 }
+
+resource "aws_iam_role" "github_actions_ro" {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:saineee@52940016/watchfloor@1344674191:pull_request"
+        }
+      }
+      Effect = "Allow"
+      Principal = {
+        Federated = data.aws_iam_openid_connect_provider.github.arn
+      }
+      }
+  ] })
+
+  name = "${var.name_prefix}-read-only"
+}
+
+resource "aws_iam_role_policy_attachment" "read_only" {
+  role       = aws_iam_role.github_actions_ro.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+//bucket and key must match backend "s3" block
+locals {
+  lock_file_arn = "arn:aws:s3:::watchfloor-tfstate-330866750121/watchfloor/backend/terraform.tfstate.tflock"
+}
+
+resource "aws_iam_role_policy" "s3_state_lock" {
+  role = aws_iam_role.github_actions_ro.id
+  name = "${var.name_prefix}-s3-state-lock"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+        "s3:PutObject", "s3:DeleteObject"]
+        Effect   = "Allow"
+        Resource = local.lock_file_arn
+    }]
+  })
+}
