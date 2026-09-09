@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     anthropic_federation_rule_id: str | None = None
     anthropic_organization_id: str | None = None
     anthropic_service_account_id: str | None = None
+    cors_origins: list[str] = []
 
     model_config = SettingsConfigDict(
         env_file=env_file,
