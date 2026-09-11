@@ -126,3 +126,31 @@ resource "aws_iam_role_policy" "s3_state_lock" {
     }]
   })
 }
+
+resource "aws_iam_policy" "boundary" {
+  name = "${var.name_prefix}-app-boundary"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+        }, {
+        Action = [
+          "ssm:GetParameters",
+          "sts:GetWebIdentityToken",
+          "logs:PutLogEvents",
+          "logs:CreateLogStream"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ],
+  })
+}
