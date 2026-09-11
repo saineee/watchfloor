@@ -1,6 +1,9 @@
 data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
 
 resource "aws_iam_role" "github_deploy" {
   assume_role_policy = jsonencode({
@@ -36,7 +39,7 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
       }, {
       Action   = ["ecs:UpdateService", "ecs:DescribeServices"]
       Effect   = "Allow"
-      Resource = module.ecs.service_arn
+      Resource = "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:service/${var.name_prefix}-cluster/${var.name_prefix}-service"
       Sid      = "ecsUpdateDescribe"
       }, {
       Action = "iam:PassRole"
@@ -46,7 +49,7 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
         }
       }
       Effect   = "Allow"
-      Resource = [module.ecs.task_role, module.ecs.exec_role]
+      Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
       Sid      = "watchfloorECSPassRole"
       }, {
       Action   = "ecr:GetAuthorizationToken"
@@ -56,22 +59,22 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
       }, {
       Action   = ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage"]
       Effect   = "Allow"
-      Resource = aws_ecr_repository.main.arn
+      Resource = "arn:aws:ecr:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:repository/${var.name_prefix}-api"
       Sid      = "ecrCollection"
       }, {
       Action = "ecs:RunTask"
       Condition = {
         StringEquals = {
-          "ecs:cluster" : module.ecs.cluster_arn
+          "ecs:cluster" : "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:cluster/${var.name_prefix}-cluster"
         }
       }
       Effect   = "Allow"
-      Resource = "${module.ecs.task_definition_arn}:*"
+      Resource = "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:task-definition/${var.name_prefix}-api:*"
       Sid      = "watchfloorRunTask"
       }, {
       Action   = "ecs:DescribeTasks"
       Effect   = "Allow"
-      Resource = "${module.ecs.task_arn_prefix}/*"
+      Resource = "arn:aws:ecs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:task/${var.name_prefix}-cluster/*"
       Sid      = "watchfloorDescTasks"
     }]
   })
