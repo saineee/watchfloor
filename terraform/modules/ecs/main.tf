@@ -8,7 +8,8 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_iam_role" "exec_role" {
-  name = "${var.name_prefix}-ecs-exec-role"
+  name                 = "${var.name_prefix}-ecs-exec-role"
+  permissions_boundary = var.permissions_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -92,7 +93,8 @@ resource "aws_ecs_task_definition" "main" {
 }
 
 resource "aws_iam_role" "ecs_task_role" {
-  name = "${var.name_prefix}-ecs-task-role"
+  name                 = "${var.name_prefix}-ecs-task-role"
+  permissions_boundary = var.permissions_boundary
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

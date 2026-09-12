@@ -38,6 +38,7 @@ module "ecs" {
   anthropic_workspace_id       = var.anthropic_workspace_id
   depends_on                   = [module.alb]
   secret_key_ssm_arn           = aws_ssm_parameter.fastapi_secret_key.arn
+  permissions_boundary         = local.permissions_boundary
 }
 
 resource "random_password" "secret_key" {
@@ -55,4 +56,10 @@ module "cloudfront" {
   source       = "./modules/cloudfront"
   alb_dns_name = module.alb.alb_dns_name
   name_prefix  = var.name_prefix
+}
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.name_prefix}-app-boundary"
 }
