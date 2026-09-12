@@ -154,3 +154,84 @@ resource "aws_iam_policy" "boundary" {
     ],
   })
 }
+
+resource "aws_iam_role" "github_apply" {
+  name = "${var.name_prefix}-apply-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:saineee@52940016/watchfloor@1344674191:environment:production"
+          }
+        }
+        Effect = "Allow"
+        Principal = {
+          Federated = data.aws_iam_openid_connect_provider.github.arn
+        }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "power_user" {
+  role       = aws_iam_role.github_apply.name
+  policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
+}
+
+resource "aws_iam_role_policy" "github_apply_policy" {
+  name = "${var.name_prefix}-github-apply-policy"
+  role = aws_iam_role.github_apply.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = ["iam:CreateRole", "iam:AttachRolePolicy", "iam:PutRolePolicy"]
+        Condition = {
+          StringEquals = {
+            "iam:PermissionsBoundary" = aws_iam_policy.boundary.arn
+          }
+        }
+        Effect   = "Allow"
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        }, {
+        Action = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies",
+          "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:DetachRolePolicy",
+        "iam:DeleteRolePolicy", "iam:DeleteRole", "iam:ListAttachedRolePolicies"]
+        Effect   = "Allow"
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        }, {
+        Action = "iam:PassRole"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "ecs-tasks.amazonaws.com"
+          }
+        }
+        Effect   = "Allow"
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        }, {
+        Action   = ["iam:PutRolePermissionsBoundary", "iam:DeleteRolePermissionsBoundary"]
+        Effect   = "Deny"
+        Resource = "*"
+        }, {
+        Action   = ["iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:DeletePolicyVersion", "iam:DeletePolicy"]
+        Effect   = "Deny"
+        Resource = aws_iam_policy.boundary.arn
+        }, {
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Effect   = "Allow"
+        Resource = "arn:aws:s3:::${var.name_prefix}-tfstate-${data.aws_caller_identity.current.account_id}/${var.name_prefix}/backend/*"
+        }, {
+        Action = "s3:ListBucket"
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["${var.name_prefix}/backend", "${var.name_prefix}/backend/*"]
+          }
+        }
+        Effect   = "Allow"
+        Resource = "arn:aws:s3:::${var.name_prefix}-tfstate-${data.aws_caller_identity.current.account_id}"
+    }]
+  })
+}
