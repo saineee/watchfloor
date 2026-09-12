@@ -4,12 +4,13 @@ on:
   pull_request:
     paths:
       - 'terraform/**'
-      - '.github/workflows/backend-ci.yml'
+      - '.github/workflows/terraform-plan.yml'
 jobs:
   tf-plan:
     permissions:
       id-token: write
       contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,4 +35,17 @@ jobs:
         run: terraform validate
 
       - name: terraform plan
-        run: terraform plan
+        run: |
+          set -o pipefail
+          terraform plan -no-color -input=false 2>&1 | tee plan.txt
+
+      - name: markdown file
+        if: ${{ !cancelled() }}
+        run: |
+          { echo '<details><summary>Terraform Plan</summary>'; echo; echo '```terraform'; head -c 60000 plan.txt || echo 'plan did not run, see earlier steps'; echo '```'; echo '</details>'; } > body.md
+
+      - name: github pull request comment
+        if: ${{ !cancelled() }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file ./body.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
