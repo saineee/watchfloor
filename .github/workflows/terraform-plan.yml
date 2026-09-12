@@ -46,6 +46,9 @@ jobs:
 
       - name: github pull request comment
         if: ${{ !cancelled() }}
-        run: gh pr comment ${{ github.event.pull_request.number }} --body-file ./body.md
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body-file ./body.md \
+            --edit-last --create-if-none
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
