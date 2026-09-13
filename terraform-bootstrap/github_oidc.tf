@@ -199,7 +199,7 @@ resource "aws_iam_role_policy" "github_apply_policy" {
         }, {
         Action = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies",
           "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:DetachRolePolicy",
-        "iam:DeleteRolePolicy", "iam:DeleteRole", "iam:ListAttachedRolePolicies"]
+        "iam:DeleteRolePolicy", "iam:DeleteRole", "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole"]
         Effect   = "Allow"
         Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
         }, {
