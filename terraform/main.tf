@@ -36,7 +36,6 @@ module "ecs" {
   anthropic_organization_id    = var.anthropic_organization_id
   anthropic_service_account_id = var.anthropic_service_account_id
   anthropic_workspace_id       = var.anthropic_workspace_id
-  depends_on                   = [module.alb]
   secret_key_ssm_arn           = aws_ssm_parameter.fastapi_secret_key.arn
   permissions_boundary         = local.permissions_boundary
 }
