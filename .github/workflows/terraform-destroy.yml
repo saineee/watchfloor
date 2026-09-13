@@ -1,0 +1,37 @@
+
+name: Terraform Destroy Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Please type destroy to confirm action: terraform destroy'
+        required: true
+        type: string
+
+jobs:
+  tf-destroy:
+    environment: production
+    if: inputs.confirmation == 'destroy'
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TERRAFORM_APPLY_ROLE }}
+          aws-region: 'us-east-1'
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.8"
+
+      - name: terraform init
+        run: terraform init
+
+      - name: terraform destroy
+        run: terraform destroy -auto-approve -input=false
