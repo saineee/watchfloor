@@ -19,5 +19,5 @@ output "repository_arn" {
 }
 
 output "distribution_domain_name" {
-  value = module.cloudfront.distribution_domain_name
+  value = one(module.cloudfront[*].distribution_domain_name)
 }

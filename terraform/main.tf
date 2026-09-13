@@ -53,6 +53,7 @@ resource "aws_ssm_parameter" "fastapi_secret_key" {
 }
 
 module "cloudfront" {
+  count        = var.enable_cloudfront ? 1 : 0
   source       = "./modules/cloudfront"
   alb_dns_name = module.alb.alb_dns_name
   name_prefix  = var.name_prefix

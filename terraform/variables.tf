@@ -27,3 +27,8 @@ variable "anthropic_workspace_id" {
   type    = string
   default = "wrkspc_0159bmAqzTYEw2ke7kcvFew9"
 }
+
+variable "enable_cloudfront" {
+  type    = bool
+  default = false
+}
