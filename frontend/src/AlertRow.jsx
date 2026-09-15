@@ -1,4 +1,5 @@
 import {useState} from 'react'
+import {API_URL} from './config.js'
 
 const ALLOWED_TRANSITIONS = {
     "new": ["resolved", "in_progress"],
@@ -14,7 +15,7 @@ function AlertRow({alert, onAlertUpdated}) {
     const triage = async () => {
         setTriaging(true)
         try {
-            const res = await fetch(`http://localhost:8000/alerts/${alert.id}/triage`, {
+            const res = await fetch(`${API_URL}/alerts/${alert.id}/triage`, {
                 method: 'POST', credentials: 'include'
             })
             if (!res.ok) {
@@ -33,7 +34,7 @@ function AlertRow({alert, onAlertUpdated}) {
     const updateStatus = async (newStatus) => {
         setUpdating(true)
         try {
-            const res = await fetch(`http://localhost:8000/alerts/${alert.id}`, {
+            const res = await fetch(`${API_URL}/alerts/${alert.id}`, {
                 method: 'PATCH',
                 credentials: 'include',
                 headers: {"Content-Type": "application/json"},

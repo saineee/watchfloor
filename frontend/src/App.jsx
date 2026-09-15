@@ -1,6 +1,7 @@
 import './App.css'
 import AlertRow from "./AlertRow.jsx"
 import {useState, useEffect} from 'react'
+import {API_URL} from './config.js'
 
 function App() {
     const [alerts, setAlerts] = useState([])
@@ -15,7 +16,7 @@ function App() {
         }
         const loadAlerts = async () => {
             try {
-                const res = await fetch('http://localhost:8000/alerts', {credentials: 'include'})
+                const res = await fetch(`${API_URL}/alerts`, {credentials: 'include'})
                 if (res.status === 401) {
                     setLoginStatus("logged_out");
                     return
@@ -39,7 +40,7 @@ function App() {
         setErrorMessage(null)
         try {
             const res = await
-                fetch('http://localhost:8000/auth/login', {
+                fetch(`${API_URL}/auth/login`, {
                     method: 'POST', headers:
                         {
                             'Content-Type':
@@ -68,7 +69,7 @@ function App() {
     const handleLogout = async () => {
         setErrorMessage(null)
         try {
-            const res = await fetch('http://localhost:8000/auth/logout', {
+            const res = await fetch(`${API_URL}/auth/logout`, {
                 method: 'POST', credentials: 'include'
             })
 
