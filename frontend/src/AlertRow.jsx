@@ -55,19 +55,34 @@ function AlertRow({alert, onAlertUpdated}) {
     const next = ALLOWED_TRANSITIONS[alert.status]
 
     return (
-        <>
-            <li>
-                {alert.id} - {alert.device_name} - {alert.severity} - <select value={alert.status}
-                                                                              onChange={(e) => updateStatus(e.target.value)}
-                                                                              disabled={updating || next.length === 0}>
+        <tr>
+            <td>{alert.severity}</td>
+            <td>{alert.device_name}</td>
+            <td>{alert.error_type}</td>
+            <td className="status-cell"><select value={alert.status}
+                                                onChange={(e) => updateStatus(e.target.value)}
+                                                disabled={updating || next.length === 0}>
                 {[alert.status, ...next].map((s) => (
                     <option key={s} value={s}>{s}</option>
                 ))}
-            </select> - {alert.summary}
+            </select>
+            </td>
+            <td>{alert.summary}</td>
+            <td className="details-cell">
+                <details>
+                    <summary>More</summary>
+                    <p>Description: {alert.description}</p>
+                    <p>IP: {alert.ip_address}</p>
+                    <p>Location: {alert.location}</p>
+                    <p>Device State: {alert.device_state}</p>
+                    <p>Occurrence Count: {alert.occurrence_count}</p>
+                </details>
+            </td>
+            <td>
                 <button type="button" onClick={triage}
                         disabled={triaging}>{triaging ? 'Triaging...' : 'Triage'}</button>
-            </li>
-        </>
+            </td>
+        </tr>
     )
 }
 
