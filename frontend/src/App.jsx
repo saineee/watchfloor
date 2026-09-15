@@ -7,10 +7,11 @@ function App() {
     const [loginStatus, setLoginStatus] = useState("loading")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [errorMessage, setErrorMessage] = useState(null)
 
     useEffect(() => {
         if (loginStatus !== "loading") {
-            return
+            return;
         }
         const loadAlerts = async () => {
             try {
@@ -25,7 +26,9 @@ function App() {
                 setAlerts(data);
                 setLoginStatus("logged_in")
             } catch (err) {
-                console.error("Failed to fetch alerts: ", err);
+                console.error("Can't reach the server: ", err);
+                setLoginStatus("unavailable")
+                setErrorMessage("Can't reach the server")
             }
         }
         loadAlerts()
@@ -33,6 +36,7 @@ function App() {
 
 
     const handleLogin = async () => {
+        setErrorMessage(null)
         try {
             const res = await
                 fetch('http://localhost:8000/auth/login', {
@@ -46,8 +50,10 @@ function App() {
                     body:
                         JSON.stringify({email, password}),
                 })
-
-            if (!res.ok) {
+            if (res.status === 401) {
+                setErrorMessage("Email or password do not match our records")
+                return
+            } else if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`)
             }
             const data = await res.json()
@@ -55,10 +61,12 @@ function App() {
             setLoginStatus("loading")
         } catch (err) {
             console.error('Login failed: ', err)
+            setErrorMessage("Login failed, try again")
         }
     }
 
     const handleLogout = async () => {
+        setErrorMessage(null)
         try {
             const res = await fetch('http://localhost:8000/auth/logout', {
                 method: 'POST', credentials: 'include'
@@ -73,7 +81,13 @@ function App() {
             setAlerts([])
         } catch (err) {
             console.error('Logout failed:', err)
+            setErrorMessage("Logout failed, try again")
         }
+    }
+
+    const handleRetry = () => {
+        setErrorMessage(null);
+        setLoginStatus("loading")
     }
 
     if (loginStatus === "loading") {
@@ -82,9 +96,19 @@ function App() {
         )
     }
 
+    if (loginStatus === "unavailable") {
+        return (
+            <>
+                <p>{errorMessage}</p>
+                <button type="button" onClick={handleRetry}>Retry</button>
+            </>
+        )
+    }
+
     return (
         <>
             <h1>watchfloor</h1>
+            {errorMessage && <p>{errorMessage}</p>}
             {loginStatus === "logged_in" ? (
                 <>
                     <div>
