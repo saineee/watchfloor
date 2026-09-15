@@ -90,6 +90,12 @@ function App() {
         setLoginStatus("loading")
     }
 
+    const handleTriaged = (updatedAlert) => {
+        setAlerts(prev => prev.map(
+            alert => (alert.id === updatedAlert.id ? updatedAlert : alert)
+        ))
+    }
+
     if (loginStatus === "loading") {
         return (
             <p>Loading</p>
@@ -115,7 +121,7 @@ function App() {
                         <button type="button" onClick={handleLogout}>Logout</button>
                         <ul>
                             {alerts.map((alert) => (
-                                <AlertRow key={alert.id} alert={alert}/>
+                                <AlertRow key={alert.id} alert={alert} onTriaged={handleTriaged}/>
                             ))}
                         </ul>
                     </div>
