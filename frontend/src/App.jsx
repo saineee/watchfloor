@@ -114,33 +114,49 @@ function App() {
 
     return (
         <>
-            <h1>watchfloor</h1>
+            <div className="page-header"><h1>watchfloor</h1>
+            </div>
             {errorMessage && <p>{errorMessage}</p>}
             {loginStatus === "logged_in" ? (
                 <>
-                    <div>
+                    <div className="page-header">
                         <button type="button" onClick={handleLogout}>Logout</button>
-                        <ul>
+                    </div>
+                    <div>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Severity</th>
+                                <th>Device</th>
+                                <th>Error</th>
+                                <th>Status</th>
+                                <th>Summary</th>
+                                <th>Details</th>
+                                <th>Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody>
                             {alerts.map((alert) => (
                                 <AlertRow key={alert.id} alert={alert} onAlertUpdated={handleAlertUpdated}/>
-                            ))}
-                        </ul>
+                            ))}</tbody>
+                        </table>
                     </div>
                 </>
             ) : (
                 <>
-                    <div>
+                    <div className="page-header">
                         <input value={email} onChange={e => setEmail(e.target.value)}
                                placeholder="email"/>
                         <input value={password} type="password" onChange={p => setPassword(p.target.value)}
                                placeholder="password"/>
+                        <button type="button" onClick={handleLogin}>Login</button>
                     </div>
-                    <button type="button" onClick={handleLogin}>Login</button>
                 </>
             )
             }
         </>
-    );
+    )
+        ;
 }
 
 export default App
