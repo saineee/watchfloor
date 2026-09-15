@@ -15,6 +15,14 @@ class AlertStatus(enum.Enum):
     resolved = "resolved"
 
 
+ALLOWED_TRANSITIONS = {
+    AlertStatus.new: {AlertStatus.in_progress, AlertStatus.resolved},
+    AlertStatus.in_progress : {AlertStatus.escalated, AlertStatus.resolved},
+    AlertStatus.escalated : {AlertStatus.in_progress, AlertStatus.resolved},
+    AlertStatus.resolved : set()
+}
+
+
 class Severity(enum.Enum):
     p1 = "P1"
     p2 = "P2"

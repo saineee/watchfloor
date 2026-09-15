@@ -6,7 +6,7 @@ from app.llm import hash_input, triage
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.database import get_db
-from app.models import Alert, AlertStatus
+from app.models import Alert, AlertStatus, ALLOWED_TRANSITIONS
 from fastapi import Depends, Query, HTTPException, APIRouter, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import AlertCreate, AlertRead, AlertUpdate
@@ -73,6 +73,11 @@ async def update_alert(alert_id: int, alert_update: AlertUpdate, db: AsyncSessio
         raise HTTPException(status_code=404, detail="Alert not found")
 
     data = alert_update.model_dump(exclude_unset=True)
+    new_status = data.get("status")
+    if new_status is not None:
+        if new_status != alert.status and new_status not in ALLOWED_TRANSITIONS[alert.status]:
+            raise HTTPException(status_code=409, detail=f"cannot transition from {alert.status.value} to {new_status.value}.")
+
     for key, value in data.items():
         setattr(alert, key, value)
 

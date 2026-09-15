@@ -99,3 +99,39 @@ async def test_get_alert_list_manual_limit_return_422(auth_client):
         "/alerts?limit=101"
     )
     assert response.status_code == 422
+
+async def test_invalid_status_transition_return_status_code_409(auth_client, alert_payload):
+    response = await auth_client.post(
+        "/alerts",
+        json=alert_payload
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "escalated"}
+    )
+    assert response.status_code == 409
+
+    response = await auth_client.get(f"/alerts/{alert_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "new"
+
+async def test_valid_status_transition_return_200_successfully(auth_client, alert_payload):
+    response = await auth_client.post(
+        "/alerts",
+        json=alert_payload
+    )
+    assert response.status_code == 201
+    alert_id = response.json()["id"]
+
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "in_progress"}
+    )
+    assert response.status_code == 200
+
+    response = await auth_client.get(f"/alerts/{alert_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_progress"
