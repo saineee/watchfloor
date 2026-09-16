@@ -12,7 +12,7 @@ on:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
 permissions:
-  content: read
+  contents: read
 jobs:
   test:
     defaults:
