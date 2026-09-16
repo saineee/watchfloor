@@ -17,6 +17,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
 
+def _resolve_check(alert: Alert):
+    if alert.status == AlertStatus.resolved:
+        raise HTTPException(status_code=409, detail="Resolved alerts cannot be modified")
+
+
 @router.post("", response_model=AlertRead)
 async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), response: Response = None):
     alert_data = alert.model_dump()
@@ -71,6 +76,7 @@ async def update_alert(alert_id: int, alert_update: AlertUpdate, db: AsyncSessio
     alert = await db.get(Alert, alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    _resolve_check(alert)
 
     data = alert_update.model_dump(exclude_unset=True)
     new_status = data.get("status")
@@ -91,6 +97,7 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
     alert = await db.get(Alert, alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
+    _resolve_check(alert)
     fingerprint = hash_input(alert)
     if fingerprint != alert.triage_source_hash:
         try:
@@ -116,4 +123,6 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         alert.triage_source_hash = fingerprint
         await db.commit()
         await db.refresh(alert)
+    else:
+        logger.info("Alert %s is already triaged", alert_id)
     return alert

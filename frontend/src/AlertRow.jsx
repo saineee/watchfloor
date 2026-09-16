@@ -80,7 +80,7 @@ function AlertRow({alert, onAlertUpdated}) {
             </td>
             <td>
                 <button type="button" onClick={triage}
-                        disabled={triaging}>{triaging ? 'Triaging...' : 'Triage'}</button>
+                        disabled={triaging || alert.status === "resolved"}>{triaging ? 'Triaging...' : 'Triage'}</button>
             </td>
         </tr>
     )

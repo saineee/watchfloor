@@ -135,3 +135,30 @@ async def test_valid_status_transition_return_200_successfully(auth_client, aler
     response = await auth_client.get(f"/alerts/{alert_id}")
     assert response.status_code == 200
     assert response.json()["status"] == "in_progress"
+
+async def test_try_patch_location_on_resolved_alert(auth_client, alert_payload):
+    response = await auth_client.post(
+        "/alerts",
+        json=alert_payload
+    )
+    assert response.status_code == 201
+
+    alert_id = response.json()["id"]
+
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"status": "resolved"},
+    )
+    assert response.status_code == 200
+
+    response = await auth_client.patch(
+        f"/alerts/{alert_id}",
+        json={"location": "thailand"},
+    )
+
+    assert response.status_code == 409
+
+    response = await auth_client.get(f"/alerts/{alert_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "resolved"
+    assert response.json()["location"] == "dallas"
