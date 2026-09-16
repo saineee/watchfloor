@@ -134,9 +134,15 @@ async def test_triage_resolved_alert_409_and_0_func_call(auth_client, alert_payl
     response = await auth_client.patch(
         f"/alerts/{alert_id}", json={"status": "resolved"}
     )
+    assert response.status_code == 200
 
     response = await auth_client.post(
         f"/alerts/{alert_id}/triage")
     assert mock_triage.call_count == 0
-    assert "summary" not in response.json()
     assert response.status_code == 409
+
+    response = await auth_client.get(
+        f"/alerts/{alert_id}")
+    assert response.status_code == 200
+    assert response.json()["summary"] is None
+    assert response.json()["severity"] is None
