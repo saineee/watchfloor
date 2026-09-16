@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
+import time
 from typing import Annotated
 import anthropic
 import pydantic
 from app.llm import hash_input, triage
-from app.metrics import ALERTS_INGESTED
+from app.metrics import ALERTS_INGESTED, TRIAGE_DURATION, TRIAGE_OUTCOMES
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.database import get_db
@@ -104,29 +105,43 @@ async def update_alert(alert_id: int, alert_update: AlertUpdate, db: AsyncSessio
 @router.post("/{alert_id}/triage", response_model=AlertRead)
 async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
     alert = await db.get(Alert, alert_id)
+    triage_outcome = "skipped"
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     _resolve_check(alert)
     fingerprint = hash_input(alert)
     if fingerprint != alert.triage_source_hash:
+        start = time.perf_counter()
         try:
             result = await triage(alert)
         except anthropic.RateLimitError:
             logger.exception("Rate limit exceeded for alert:%s", alert_id)
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Rate limit exceeded")
         except anthropic.InternalServerError:
             logger.exception("Internal server error for alert:%s", alert_id)
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Internal server error")
         except anthropic.APIStatusError:
             logger.exception("Api status error for alert:%s", alert_id)
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=502, detail="API status error")
         except anthropic.APIConnectionError:
             logger.exception("Connection error for alert:%s", alert_id)
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Connection error")
         except pydantic.ValidationError:
             logger.exception("Validation error for alert:%s", alert_id)
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=502, detail="Validation error")
-
+        TRIAGE_DURATION.observe(time.perf_counter() - start)
+        triage_outcome = "completed"
+        TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
         alert.summary = result.summary
         alert.severity = result.severity
         alert.triage_source_hash = fingerprint
@@ -134,4 +149,5 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         await db.refresh(alert)
     else:
         logger.info("Alert %s is already triaged", alert_id)
+        TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
     return alert
