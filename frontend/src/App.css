@@ -17,3 +17,36 @@ th {
 td {
     text-align: center;
 }
+
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.badge.p1 {
+    background: #b3261e;
+}
+
+.badge.p2 {
+    background: #c2410c;
+}
+
+.badge.p3 {
+    background: #92400e;
+}
+
+.badge.p4 {
+    background: #1d4ed8;
+}
+
+.badge.p5 {
+    background: #475569;
+}
+
+.badge.untriaged {
+    background: #6b7280;
+}

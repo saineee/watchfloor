@@ -56,7 +56,8 @@ function AlertRow({alert, onAlertUpdated}) {
 
     return (
         <tr>
-            <td>{alert.severity}</td>
+            <td>{alert.severity ? <span className={`badge ${alert.severity.toLowerCase()}`}>{alert.severity}</span> :
+                <span className="badge untriaged">Untriaged</span>}</td>
             <td>{alert.device_name}</td>
             <td>{alert.error_type}</td>
             <td className="status-cell"><select value={alert.status}
