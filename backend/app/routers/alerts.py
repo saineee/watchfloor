@@ -3,6 +3,7 @@ from typing import Annotated
 import anthropic
 import pydantic
 from app.llm import hash_input, triage
+from app.metrics import ALERTS_INGESTED
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from app.database import get_db
@@ -30,12 +31,15 @@ async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), r
                                Alert.status != AlertStatus.resolved)
     result = await db.execute(stmt)
     existing_alert = result.scalar_one_or_none()
+    ingest_result = "deduped"
     if not existing_alert:
         db_alert = Alert(**alert_data)
         db.add(db_alert)
         try:
             await db.commit()
             await db.refresh(db_alert)
+            ingest_result = "created"
+            ALERTS_INGESTED.labels(result=ingest_result).inc()
             response.status_code = 201
             return db_alert
         # IntegrityError may occur because a concurrent request inserted the same
@@ -44,7 +48,10 @@ async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), r
             await db.rollback()
             result = await db.execute(stmt)
             existing_alert = result.scalar_one_or_none()
+            ingest_result = "raced"
             if not existing_alert:
+                ingest_result = "race_resolved"
+                ALERTS_INGESTED.labels(result=ingest_result).inc()
                 raise HTTPException(status_code=409, detail="Alert resolved during race, retry")
 
     existing_alert.occurrence_count += 1
@@ -52,6 +59,7 @@ async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), r
     await db.commit()
     await db.refresh(existing_alert)
     response.status_code = 200
+    ALERTS_INGESTED.labels(result=ingest_result).inc()
     return existing_alert
 
 
@@ -82,7 +90,8 @@ async def update_alert(alert_id: int, alert_update: AlertUpdate, db: AsyncSessio
     new_status = data.get("status")
     if new_status is not None:
         if new_status != alert.status and new_status not in ALLOWED_TRANSITIONS[alert.status]:
-            raise HTTPException(status_code=409, detail=f"cannot transition from {alert.status.value} to {new_status.value}.")
+            raise HTTPException(status_code=409,
+                                detail=f"cannot transition from {alert.status.value} to {new_status.value}.")
 
     for key, value in data.items():
         setattr(alert, key, value)
