@@ -12,3 +12,9 @@ TRIAGE_DURATION = Histogram(name="triage_duration_seconds",
 TRIAGE_OUTCOMES = Counter(name="triage_requests",
                           documentation="triage requests by outcome: completed, skipped, or failed.",
                           labelnames=["outcome"])
+
+for outcome in ("completed", "skipped", "failed"):
+    TRIAGE_OUTCOMES.labels(outcome=outcome)
+
+for alert_outcome in ("created", "deduped", "raced", "race_resolved"):
+    ALERTS_INGESTED.labels(result=alert_outcome)
