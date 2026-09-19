@@ -2,6 +2,7 @@ apiVersion: 1
 providers:
   - name: watchfloor
     folder: watchfloor
+    folderUid: watchfloor
     type: file
     allowUiUpdates: false
     options:
