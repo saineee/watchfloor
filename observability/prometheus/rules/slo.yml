@@ -20,4 +20,13 @@ groups:
           severity: ticket
         annotations:
           summary: Triage error_rate over 10% for past 30 minutes [MAJOR]
-
+  - name: availability
+    interval: 15s
+    rules:
+      - alert: APIDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.instance }} is unreachable [CRITICAL]"
