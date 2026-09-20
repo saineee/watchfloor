@@ -15,6 +15,7 @@ services:
     volumes:
       - prometheus_data:/prometheus
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/rules:/etc/prometheus/rules:ro
     extra_hosts:
       - host.docker.internal:host-gateway
     healthcheck:

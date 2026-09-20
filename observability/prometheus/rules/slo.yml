@@ -1,0 +1,23 @@
+groups:
+  - name: error_rate
+    interval: 15s
+    rules:
+      - record: slo:triage_errors:ratio_rate5m
+        expr: sum(increase(triage_requests_total{outcome="failed"}[5m]))/sum(increase(triage_requests_total{outcome=~"completed|failed"}[5m]))
+      - alert: TriageFastBurn
+        expr: slo:triage_errors:ratio_rate5m > 0.5
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Triage error_rate over 50% for past 2 minutes [CRITICAL]
+      - record: slo:triage_errors:ratio_rate30m
+        expr: sum(increase(triage_requests_total{outcome="failed"}[30m]))/sum(increase(triage_requests_total{outcome=~"completed|failed"}[30m]))
+      - alert: TriageSlowBurn
+        expr: slo:triage_errors:ratio_rate30m > 0.1
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Triage error_rate over 10% for past 30 minutes [MAJOR]
+
