@@ -32,6 +32,11 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    ports: ["9093:9093"]
+    volumes:
+      - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
 volumes:
   postgres_data:
   prometheus_data:
