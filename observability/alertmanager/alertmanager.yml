@@ -1,4 +1,13 @@
 route:
   receiver: default
+  routes:
+    - receiver: sns-page
+      matchers:
+        - severity = "page"
+    - receiver: sns-ticket
+      matchers:
+        - severity = "ticket"
 receivers:
   - name: default
+  - name: sns-page
+  - name: sns-ticket
