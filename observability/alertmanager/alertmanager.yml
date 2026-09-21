@@ -11,3 +11,10 @@ receivers:
   - name: default
   - name: sns-page
   - name: sns-ticket
+
+sns_configs:
+  send_resolved: true
+  sigv4:
+    - region: 'us-east'1'
+    - role_arn: fee
+
