@@ -10,11 +10,18 @@ route:
 receivers:
   - name: default
   - name: sns-page
+    sns_configs:
+    - send_resolved: true
+      topic_arn: "arn:aws:sns:us-east-1:330866750121:watchfloor-AM_Page"
+      sigv4:
+        profile: "default"
+        role_arn: "arn:aws:iam::330866750121:role/watchfloor-alertmanager-role"
+        region: "us-east-1"
   - name: sns-ticket
-
-sns_configs:
-  send_resolved: true
-  sigv4:
-    - region: 'us-east'1'
-    - role_arn: fee
-
+    sns_configs:
+    - send_resolved: true
+      topic_arn: "arn:aws:sns:us-east-1:330866750121:watchfloor-AM_Ticket"
+      sigv4:
+        profile: "default"
+        role_arn: "arn:aws:iam::330866750121:role/watchfloor-alertmanager-role"
+        region: "us-east-1"
