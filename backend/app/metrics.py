@@ -13,6 +13,10 @@ TRIAGE_OUTCOMES = Counter(name="triage_requests",
                           documentation="triage requests by outcome: completed, skipped, or failed.",
                           labelnames=["outcome"])
 
+HTTP_REQUEST_STATUS_CODES = Counter(name="http_requests",
+                                    documentation="HTTP requests handled, by method, route, and status codes",
+                                    labelnames=["route", "status_code", "method"])
+
 for outcome in ("completed", "skipped", "failed"):
     TRIAGE_OUTCOMES.labels(outcome=outcome)
 
