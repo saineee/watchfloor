@@ -5,13 +5,15 @@ services:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=watchfloordb
-    ports: ["5433:5432"]
+    ports: [ "5433:5432" ]
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
   prometheus:
     image: prom/prometheus:v3.14.0
-    ports: ["9090:9090"]
+    command: [ "--config.file=/etc/prometheus/prometheus.yml",
+               "--storage.tsdb.path=/prometheus", "--web.external-url=http://localhost:9090" ]
+    ports: [ "9090:9090" ]
     volumes:
       - prometheus_data:/prometheus
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -19,14 +21,14 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/ready"]
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9090/-/ready" ]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 10s
   grafana:
     image: grafana/grafana:13.0.3
-    ports: ["3000:3000"]
+    ports: [ "3000:3000" ]
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
@@ -34,9 +36,10 @@ services:
         condition: service_healthy
   alertmanager:
     image: prom/alertmanager:v0.34.1
-    ports: ["9093:9093"]
+    ports: [ "9093:9093" ]
     volumes:
       - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ${HOME}/.aws/credentials:/home/.aws/credentials:ro
 volumes:
   postgres_data:
   prometheus_data:
