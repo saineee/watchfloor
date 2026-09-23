@@ -150,6 +150,19 @@ resource "aws_iam_policy" "boundary" {
         ]
         Effect   = "Allow"
         Resource = "*"
+        }, {
+        Action   = ["sns:Publish"]
+        Effect   = "Allow"
+        Resource = "arn:aws:sns:us-east-1:${data.aws_caller_identity.current.account_id}:${var.name_prefix}-*"
+        }, {
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
       }
     ],
   })
@@ -195,13 +208,13 @@ resource "aws_iam_role_policy" "github_apply_policy" {
           }
         }
         Effect   = "Allow"
-        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-*"]
         }, {
         Action = ["iam:GetRole", "iam:GetRolePolicy", "iam:ListRolePolicies",
           "iam:TagRole", "iam:UntagRole", "iam:UpdateAssumeRolePolicy", "iam:DetachRolePolicy",
         "iam:DeleteRolePolicy", "iam:DeleteRole", "iam:ListAttachedRolePolicies", "iam:ListInstanceProfilesForRole"]
         Effect   = "Allow"
-        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-*"]
         }, {
         Action = "iam:PassRole"
         Condition = {
@@ -210,7 +223,7 @@ resource "aws_iam_role_policy" "github_apply_policy" {
           }
         }
         Effect   = "Allow"
-        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-task-role", "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-exec-role"]
+        Resource = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.name_prefix}-ecs-*"]
         }, {
         Action   = ["iam:PutRolePermissionsBoundary", "iam:DeleteRolePermissionsBoundary"]
         Effect   = "Deny"
