@@ -39,9 +39,15 @@ services:
   alertmanager:
     image: prom/alertmanager:v0.34.1
     ports: [ "9093:9093" ]
+    environment:
+      - AWS_PROFILE=alertmanager
+      - AWS_REGION=us-east-1
+      - AWS_CONFIG_FILE=/home/.aws/config
+      - AWS_SHARED_CREDENTIALS_FILE=/home/.aws/credentials
     volumes:
       - ./observability/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - ${HOME}/.aws/credentials:/home/.aws/credentials:ro
+      - ${HOME}/.aws/config:/home/.aws/config:ro
 volumes:
   postgres_data:
   prometheus_data:
