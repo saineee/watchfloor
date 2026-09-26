@@ -37,7 +37,7 @@ services:
         aliases:
           - "prometheus.watchfloor.local"
   grafana:
-    image: grafana/grafana:13.0.3
+    image: grafana/grafana:13.2.2
     ports: [ "3000:3000" ]
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
