@@ -27,9 +27,9 @@ jobs:
           REPOSITORY: 'watchfloor-api'
           IMAGE_TAG: ${{ github.ref_name }}
         run: |
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG backend/
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" backend/
+          docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
       - run: aws ecs describe-task-definition --task-definition watchfloor-api --query taskDefinition --output json > task-definition.json
         name: describe
       - uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -39,10 +39,13 @@ jobs:
           container-name: 'watchfloor-api'
           image: ${{ steps.build.outputs.image }}
       - run: |
+          # shellcheck disable=SC2016
+          # backticks are there for literal comma character
           echo "subnets=$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
-            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets|join(`,`,@)' --output text)">> $GITHUB_OUTPUT
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets|join(`,`,@)' --output text)">> "$GITHUB_OUTPUT"
+          # shellcheck disable=SC2016
           echo "sgroups=$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
-            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups|join(`,`,@)' --output text)" >> $GITHUB_OUTPUT
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups|join(`,`,@)' --output text)" >> "$GITHUB_OUTPUT"
         id: vpc
       - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
