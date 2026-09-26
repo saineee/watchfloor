@@ -27,6 +27,44 @@ resource "aws_iam_role" "github_deploy" {
   name = "${var.name_prefix}-github-deploy"
 }
 
+resource "aws_iam_role" "github_obs_deploy_role" {
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:saineee@52940016/watchfloor@1344674191:ref:refs/heads/main"
+        }
+      }
+      Effect = "Allow"
+      Principal = {
+        Federated = data.aws_iam_openid_connect_provider.github.arn
+      }
+    }]
+    Version = "2012-10-17"
+  })
+  name = "${var.name_prefix}-github-obs-deploy"
+}
+
+resource "aws_iam_role_policy" "github_obs_role_policy" {
+  name = "${var.name_prefix}-github-obs-deploy-policy"
+  role = aws_iam_role.github_obs_deploy_role.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage"]
+      Effect   = "Allow"
+      Resource = "arn:aws:ecr:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:repository/${var.name_prefix}-obs-*"
+      Sid      = "ecrCollectionObs" }, {
+      Action   = "ecr:GetAuthorizationToken"
+      Effect   = "Allow"
+      Resource = "*"
+      Sid      = "watchfloorGetAuthToken"
+    }]
+  })
+}
+
 resource "aws_iam_role_policy" "github_deploy_role_policy" {
   name = "${var.name_prefix}-github-deploy-policy"
   policy = jsonencode({
