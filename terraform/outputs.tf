@@ -10,14 +10,14 @@ output "alb_dns_name" {
   value = module.alb.alb_dns_name
 }
 
-output "repository_url" {
-  value = aws_ecr_repository.main.repository_url
-}
-
-output "repository_arn" {
-  value = aws_ecr_repository.main.arn
-}
-
 output "distribution_domain_name" {
   value = one(module.cloudfront[*].distribution_domain_name)
+}
+
+output "ecr_api_url" {
+  value = data.aws_ecr_repository.api.repository_url
+}
+
+output "api_repository_arn" {
+  value = data.aws_ecr_repository.api.arn
 }
