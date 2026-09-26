@@ -1,0 +1,42 @@
+name: Observability CD Pipeline
+
+on:
+  push:
+    paths:
+      - 'observability/**'
+      - '.github/workflows/observability-cd.yml'
+    workflow_dispatch:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  push:
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [prometheus, grafana, alertmanager]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.OBS_DEPLOY_ROLE }}
+          aws-region: 'us-east-1'
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build, Tag, Push
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: watchfloor-obs-${{ matrix.service }}
+          IMAGE_TAG: ${{ github.sha }}
+          SERVICE: ${{ matrix.service }}
+        run: |
+          # build all 3 via matrix because all dockerfiles are only 2 or 3 layers
+          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" "observability/$SERVICE"
+          docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
