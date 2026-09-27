@@ -58,6 +58,11 @@ module "cloudfront" {
   name_prefix  = var.name_prefix
 }
 
+module "cloudmap" {
+  source = "./modules/cloudmap"
+  vpc_id = module.vpc.vpc_id
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
