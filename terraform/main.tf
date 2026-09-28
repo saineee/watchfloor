@@ -81,6 +81,10 @@ module "efs" {
   efs_sg_id           = module.security.sec_group_ids["efs_mnt"]
 }
 
+module "observability" {
+  source      = "./modules/observability"
+  name_prefix = var.name_prefix
+}
 
 data "aws_caller_identity" "current" {}
 
