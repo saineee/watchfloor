@@ -63,6 +63,14 @@ module "cloudmap" {
   vpc_id = module.vpc.vpc_id
 }
 
+module "efs" {
+  source              = "./modules/efs"
+  name_prefix         = var.name_prefix
+  private_subnets_ids = module.vpc.private_subnet_ids
+  efs_sg_id           = module.security.sec_group_ids["efs_mnt"]
+}
+
+
 data "aws_caller_identity" "current" {}
 
 locals {
