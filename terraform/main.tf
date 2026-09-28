@@ -38,6 +38,7 @@ module "ecs" {
   anthropic_workspace_id       = var.anthropic_workspace_id
   secret_key_ssm_arn           = aws_ssm_parameter.fastapi_secret_key.arn
   permissions_boundary         = local.permissions_boundary
+  account_id                   = data.aws_caller_identity.current.account_id
 }
 
 resource "random_password" "secret_key" {

@@ -60,3 +60,7 @@ variable "secret_key_ssm_arn" {
 variable "permissions_boundary" {
   type = string
 }
+
+variable "account_id" {
+  type = string
+}

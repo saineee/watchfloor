@@ -17,6 +17,11 @@ resource "aws_iam_role" "exec_role" {
         Effect    = "Allow"
         Action    = "sts:AssumeRole"
         Principal = { Service = "ecs-tasks.amazonaws.com" }
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = var.account_id
+          }
+        }
       }
     ]
   })
@@ -103,6 +108,11 @@ resource "aws_iam_role" "ecs_task_role" {
         Effect = "Allow"
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
+        }
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = var.account_id
+          }
         }
     }]
   })
