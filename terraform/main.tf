@@ -51,6 +51,17 @@ resource "aws_ssm_parameter" "fastapi_secret_key" {
   value = random_password.secret_key.result
 }
 
+resource "random_password" "grafana_pass" {
+  length  = 16
+  special = true
+}
+
+resource "aws_ssm_parameter" "grafana_pass" {
+  name  = "/${var.name_prefix}/GF_SECURITY_ADMIN_PASSWORD"
+  type  = "SecureString"
+  value = random_password.grafana_pass.result
+}
+
 module "cloudfront" {
   count        = var.enable_cloudfront ? 1 : 0
   source       = "./modules/cloudfront"
