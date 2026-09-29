@@ -88,6 +88,10 @@ module "observability" {
   permissions_boundary = local.permissions_boundary
   graf_pass_arn        = aws_ssm_parameter.grafana_pass.arn
   account_id           = data.aws_caller_identity.current.account_id
+  prom_cloudmap        = module.cloudmap.registry_arns["prometheus"]
+  graf_cloudmap        = module.cloudmap.registry_arns["grafana"]
+  am_cloudmap          = module.cloudmap.registry_arns["alertmanager"]
+
 }
 
 data "aws_caller_identity" "current" {}
