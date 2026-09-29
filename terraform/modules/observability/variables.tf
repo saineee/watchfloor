@@ -25,3 +25,25 @@ variable "graf_cloudmap" {
 variable "am_cloudmap" {
   type = string
 }
+
+variable "cpu" {
+  type    = number
+  default = 256
+}
+
+variable "memory" {
+  type    = number
+  default = 512
+}
+
+variable "cluster_arn" {
+  type = string
+}
+
+variable "private_subnets_ids" {
+  type = list(string)
+}
+
+variable "alertmanager_sg" {
+  type = string
+}
