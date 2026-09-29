@@ -157,7 +157,7 @@ resource "aws_ecs_task_definition" "alertmanager" {
           logDriver = "awslogs"
           options = {
             "awslogs-group"         = aws_cloudwatch_log_group.obs["alertmanager"].name
-            awslogs-region          = "us-east-1"
+            "awslogs-region"        = "us-east-1"
             "awslogs-stream-prefix" = "ecs"
           }
         }
@@ -179,5 +179,78 @@ resource "aws_ecs_service" "alertmanager" {
   }
   service_registries {
     registry_arn = var.am_cloudmap
+  }
+}
+
+
+resource "aws_ecs_task_definition" "prometheus" {
+  family                   = "${var.name_prefix}-obs-prometheus"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  execution_role_arn       = aws_iam_role.obs_exec.arn
+  memory                   = tostring(var.memory)
+  cpu                      = tostring(var.cpu)
+  container_definitions = jsonencode(
+    [
+      {
+        name      = "${var.name_prefix}-obs-prometheus"
+        image     = data.aws_ecr_image.obs["prometheus"].image_uri
+        essential = true
+        command = [
+          "--config.file=/etc/prometheus/prometheus.yml",
+          "--storage.tsdb.path=/prometheus",
+          "--web.external-url=http://prometheus.watchfloor.local:9090"
+        ]
+        healthCheck = {
+          command     = ["CMD-SHELL", "wget --spider -q http://localhost:9090/-/ready || exit 1"]
+          interval    = 30
+          timeout     = 5
+          retries     = 3
+          startPeriod = 15
+        }
+        mountPoints = [
+          {
+            sourceVolume  = "prometheus_data"
+            containerPath = "/prometheus"
+            readOnly      = false
+          }
+        ]
+        portMappings = [{ containerPort = 9090 }]
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            "awslogs-group"         = aws_cloudwatch_log_group.obs["prometheus"].name
+            "awslogs-region"        = "us-east-1"
+            "awslogs-stream-prefix" = "ecs"
+          }
+        }
+      }
+    ]
+  )
+  volume {
+    name = "prometheus_data"
+    efs_volume_configuration {
+      file_system_id     = var.file_system_id
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = var.access_point_id
+      }
+    }
+  }
+}
+
+resource "aws_ecs_service" "prometheus" {
+  name            = "${var.name_prefix}-obs-prometheus-service"
+  cluster         = var.cluster_arn
+  task_definition = aws_ecs_task_definition.prometheus.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = var.private_subnets_ids
+    security_groups  = [var.prom_sg]
+    assign_public_ip = false
+  }
+  service_registries {
+    registry_arn = var.prom_cloudmap
   }
 }

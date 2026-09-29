@@ -47,3 +47,15 @@ variable "private_subnets_ids" {
 variable "alertmanager_sg" {
   type = string
 }
+
+variable "file_system_id" {
+  type = string
+}
+
+variable "access_point_id" {
+  type = string
+}
+
+variable "prom_sg" {
+  type = string
+}

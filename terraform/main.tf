@@ -94,6 +94,9 @@ module "observability" {
   cluster_arn          = module.ecs.cluster_arn
   private_subnets_ids  = module.vpc.private_subnet_ids
   alertmanager_sg      = module.security.sec_group_ids["alertmanager"]
+  file_system_id       = module.efs.file_system_id
+  access_point_id      = module.efs.prom_efs_access_point
+  prom_sg              = module.security.sec_group_ids["prometheus"]
 }
 
 data "aws_caller_identity" "current" {}
