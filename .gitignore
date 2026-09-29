@@ -9,3 +9,4 @@ dist/
 .idea/
 !frontend/.env.development
 terraform-persistent/terraform.tfvars
+terraform/tfplan
