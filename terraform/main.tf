@@ -91,7 +91,9 @@ module "observability" {
   prom_cloudmap        = module.cloudmap.registry_arns["prometheus"]
   graf_cloudmap        = module.cloudmap.registry_arns["grafana"]
   am_cloudmap          = module.cloudmap.registry_arns["alertmanager"]
-
+  cluster_arn          = module.ecs.cluster_arn
+  private_subnets_ids  = module.vpc.private_subnet_ids
+  alertmanager_sg      = module.security.sec_group_ids["alertmanager"]
 }
 
 data "aws_caller_identity" "current" {}

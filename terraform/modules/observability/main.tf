@@ -10,6 +10,12 @@ data "aws_sns_topic" "ticket" {
   name = "${var.name_prefix}-AM_Ticket"
 }
 
+data "aws_ecr_image" "obs" {
+  for_each        = toset(local.obs)
+  repository_name = "${var.name_prefix}-obs-${each.key}"
+  most_recent     = true
+}
+
 resource "aws_cloudwatch_log_group" "obs" {
   for_each          = toset(local.obs)
   name              = "/ecs/${var.name_prefix}/obs/${each.key}"
@@ -123,4 +129,55 @@ resource "aws_iam_role_policy" "obs_task_alertmanager" {
       Resource = [data.aws_sns_topic.page.arn, data.aws_sns_topic.ticket.arn]
     }]
   })
+}
+
+resource "aws_ecs_task_definition" "alertmanager" {
+  family                   = "${var.name_prefix}-obs-alertmanager"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  execution_role_arn       = aws_iam_role.obs_exec.arn
+  task_role_arn            = aws_iam_role.alertmanager_task_role.arn
+  memory                   = tostring(var.memory)
+  cpu                      = tostring(var.cpu)
+  container_definitions = jsonencode(
+    [
+      {
+        name      = "${var.name_prefix}-obs-alertmanager"
+        image     = data.aws_ecr_image.obs["alertmanager"].image_uri
+        essential = true
+        healthCheck = {
+          command     = ["CMD-SHELL", "wget --spider -q http://localhost:9093/-/healthy || exit 1"]
+          interval    = 30
+          timeout     = 5
+          retries     = 3
+          startPeriod = 15
+        }
+        portMappings = [{ containerPort = 9093 }]
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            "awslogs-group"         = aws_cloudwatch_log_group.obs["alertmanager"].name
+            awslogs-region          = "us-east-1"
+            "awslogs-stream-prefix" = "ecs"
+          }
+        }
+      }
+    ]
+  )
+}
+
+resource "aws_ecs_service" "alertmanager" {
+  name            = "${var.name_prefix}-obs-alertmanager-service"
+  cluster         = var.cluster_arn
+  task_definition = aws_ecs_task_definition.alertmanager.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = var.private_subnets_ids
+    security_groups  = [var.alertmanager_sg]
+    assign_public_ip = false
+  }
+  service_registries {
+    registry_arn = var.am_cloudmap
+  }
 }
