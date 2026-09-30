@@ -59,3 +59,7 @@ variable "access_point_id" {
 variable "prom_sg" {
   type = string
 }
+
+variable "graf_sg" {
+  type = string
+}

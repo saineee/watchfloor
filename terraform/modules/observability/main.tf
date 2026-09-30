@@ -254,3 +254,61 @@ resource "aws_ecs_service" "prometheus" {
     registry_arn = var.prom_cloudmap
   }
 }
+
+resource "aws_ecs_task_definition" "grafana" {
+  family                   = "${var.name_prefix}-obs-grafana"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  execution_role_arn       = aws_iam_role.obs_exec.arn
+  task_role_arn            = aws_iam_role.graf_task_role.arn
+  memory                   = tostring(var.memory)
+  cpu                      = tostring(var.cpu)
+  container_definitions = jsonencode(
+    [
+      {
+        name      = "${var.name_prefix}-obs-grafana"
+        image     = data.aws_ecr_image.obs["grafana"].image_uri
+        essential = true
+        healthCheck = {
+          command     = ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health || exit 1"]
+          interval    = 30
+          timeout     = 5
+          retries     = 3
+          startPeriod = 15
+        }
+        portMappings = [{ containerPort = 3000 }]
+        secrets = [
+          {
+            name      = "GF_SECURITY_ADMIN_PASSWORD"
+            valueFrom = var.graf_pass_arn
+          }
+        ]
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            "awslogs-group"         = aws_cloudwatch_log_group.obs["grafana"].name
+            "awslogs-region"        = "us-east-1"
+            "awslogs-stream-prefix" = "ecs"
+          }
+        }
+      }
+    ]
+  )
+}
+
+resource "aws_ecs_service" "grafana" {
+  name                   = "${var.name_prefix}-obs-grafana-service"
+  cluster                = var.cluster_arn
+  task_definition        = aws_ecs_task_definition.grafana.arn
+  desired_count          = 1
+  enable_execute_command = true
+  launch_type            = "FARGATE"
+  network_configuration {
+    subnets          = var.private_subnets_ids
+    security_groups  = [var.graf_sg]
+    assign_public_ip = false
+  }
+  service_registries {
+    registry_arn = var.graf_cloudmap
+  }
+}
