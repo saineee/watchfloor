@@ -150,4 +150,7 @@ resource "aws_ecs_service" "main" {
   lifecycle {
     ignore_changes = [task_definition]
   }
+  service_registries {
+    registry_arn = var.api_cloudmap
+  }
 }

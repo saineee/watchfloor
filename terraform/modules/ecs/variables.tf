@@ -64,3 +64,7 @@ variable "permissions_boundary" {
 variable "account_id" {
   type = string
 }
+
+variable "api_cloudmap" {
+  type = string
+}

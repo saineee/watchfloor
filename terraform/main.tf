@@ -39,6 +39,7 @@ module "ecs" {
   secret_key_ssm_arn           = aws_ssm_parameter.fastapi_secret_key.arn
   permissions_boundary         = local.permissions_boundary
   account_id                   = data.aws_caller_identity.current.account_id
+  api_cloudmap                 = module.cloudmap.registry_arns["api"]
 }
 
 resource "random_password" "secret_key" {
