@@ -97,6 +97,7 @@ module "observability" {
   file_system_id       = module.efs.file_system_id
   access_point_id      = module.efs.prom_efs_access_point
   prom_sg              = module.security.sec_group_ids["prometheus"]
+  graf_sg              = module.security.sec_group_ids["grafana"]
 }
 
 data "aws_caller_identity" "current" {}
