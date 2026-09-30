@@ -5,7 +5,7 @@ resource "aws_service_discovery_private_dns_namespace" "watchfloor" {
 }
 
 locals {
-  obs_services = ["prometheus", "grafana", "alertmanager"]
+  obs_services = ["prometheus", "grafana", "alertmanager", "api"]
 }
 
 resource "aws_service_discovery_service" "services" {
