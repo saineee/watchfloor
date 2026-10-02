@@ -50,9 +50,11 @@ async def create_alert(alert: AlertCreate, db: AsyncSession = Depends(get_db), r
             result = await db.execute(stmt)
             existing_alert = result.scalar_one_or_none()
             ingest_result = "raced"
+            logger.info("raced", extra={"error_type": alert_data["error_type"], "device_name": alert_data["device_name"]})
             if not existing_alert:
                 ingest_result = "race_resolved"
                 ALERTS_INGESTED.labels(result=ingest_result).inc()
+                logger.warning("race_resolved", extra={"error_type": alert_data["error_type"], "device_name": alert_data["device_name"]})
                 raise HTTPException(status_code=409, detail="Alert resolved during race, retry")
 
     existing_alert.occurrence_count += 1
@@ -115,27 +117,27 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         try:
             result = await triage(alert)
         except anthropic.RateLimitError:
-            logger.exception("Rate limit exceeded for alert:%s", alert_id)
+            logger.exception("Rate limit exceeded for alert", extra={"alert_id":alert_id})
             triage_outcome = "failed"
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Rate limit exceeded")
         except anthropic.InternalServerError:
-            logger.exception("Internal server error for alert:%s", alert_id)
+            logger.exception("Internal server error for alert", extra={"alert_id": alert_id})
             triage_outcome = "failed"
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Internal server error")
         except anthropic.APIStatusError:
-            logger.exception("Api status error for alert:%s", alert_id)
+            logger.exception("Api status error for alert", extra={"alert_id": alert_id})
             triage_outcome = "failed"
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=502, detail="API status error")
         except anthropic.APIConnectionError:
-            logger.exception("Connection error for alert:%s", alert_id)
+            logger.exception("Connection error for alert", extra={"alert_id": alert_id})
             triage_outcome = "failed"
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=503, detail="Connection error")
         except pydantic.ValidationError:
-            logger.exception("Validation error for alert:%s", alert_id)
+            logger.exception("Validation error for alert", extra={"alert_id": alert_id})
             triage_outcome = "failed"
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=502, detail="Validation error")
@@ -148,6 +150,6 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
         await db.commit()
         await db.refresh(alert)
     else:
-        logger.info("Alert %s is already triaged", alert_id)
+        logger.info("Alert is already triaged", extra={"alert_id": alert_id})
         TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
     return alert
