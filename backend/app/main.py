@@ -8,10 +8,11 @@ from app.routers.alerts import router as alerts_router
 from app.routers.auth import router as auth_router
 import logging
 from app.metrics import HTTP_REQUEST_STATUS_CODES
-
+from app.logs import setup_logging, request_id_var
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from uuid import uuid4
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 app = FastAPI()
 
@@ -21,11 +22,13 @@ def extract_route(request: Request):
     route_path = route.path if route else "unmatched"
     return route_path
 
+QUIET_ROUTES = {"/metrics", "/healthz"}
 
 @app.middleware("http")
 async def http_request_metric(request: Request, call_next):
     method = request.method
     start = time.perf_counter()
+    request_id_var.set(uuid4().hex)
     try:
         response = await call_next(request)
     except Exception:
@@ -36,8 +39,9 @@ async def http_request_metric(request: Request, call_next):
         raise
     status_code = response.status_code
     route = extract_route(request)
-    logger.info("request", extra={"method": method, "route": route, "status": response.status_code,
-                                  "latency_ms": round((time.perf_counter() - start) * 1000, 1)})
+    if route not in QUIET_ROUTES:
+        logger.info("request", extra={"method": method, "route": route, "status": response.status_code,
+                                      "latency_ms": round((time.perf_counter() - start) * 1000, 1)})
     HTTP_REQUEST_STATUS_CODES.labels(status_code=status_code, method=method, route=route).inc()
     return response
 
