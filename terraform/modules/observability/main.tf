@@ -313,10 +313,6 @@ resource "aws_ecs_service" "grafana" {
   }
 }
 
-data "aws_sns_topic" "page" {
-  name = "${var.name_prefix}-AM_Page"
-}
-
 resource "aws_sns_topic" "watchdog" {
   name = "${var.name_prefix}-watchdog"
 }
