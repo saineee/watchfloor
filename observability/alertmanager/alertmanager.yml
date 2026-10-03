@@ -7,6 +7,10 @@ route:
     - receiver: sns-ticket
       matchers:
         - severity = "ticket"
+    - receiver: watchdog
+      matchers:
+        - heartbeat = "true"
+      repeat_interval: 5m
 receivers:
   - name: default
   - name: sns-page
@@ -21,3 +25,9 @@ receivers:
       topic_arn: "arn:aws:sns:us-east-1:330866750121:watchfloor-AM_Ticket"
       sigv4:
         region: "us-east-1"
+  - name: watchdog
+    sns_configs:
+      - send_resolved: false
+        topic_arn: "arn:aws:sns:us-east-1:330866750121:watchfloor-watchdog"
+        sigv4:
+          region: "us-east-1"
