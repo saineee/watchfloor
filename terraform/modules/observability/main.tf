@@ -126,7 +126,7 @@ resource "aws_iam_role_policy" "obs_task_alertmanager" {
         "sns:Publish"
       ]
       Effect   = "Allow"
-      Resource = [data.aws_sns_topic.page.arn, data.aws_sns_topic.ticket.arn]
+      Resource = [data.aws_sns_topic.page.arn, data.aws_sns_topic.ticket.arn, aws_sns_topic.watchdog.arn]
     }]
   })
 }
@@ -311,4 +311,34 @@ resource "aws_ecs_service" "grafana" {
   service_registries {
     registry_arn = var.graf_cloudmap
   }
+}
+
+data "aws_sns_topic" "page" {
+  name = "${var.name_prefix}-AM_Page"
+}
+
+resource "aws_sns_topic" "watchdog" {
+  name = "${var.name_prefix}-watchdog"
+}
+
+resource "aws_cloudwatch_metric_alarm" "watchdog" {
+  alarm_name          = "${var.name_prefix}-deadmans-switch"
+  comparison_operator = "LessThanThreshold"
+  metric_name         = "NumberOfMessagesPublished"
+  namespace           = "AWS/SNS"
+  statistic           = "Sum"
+  threshold           = 1
+  alarm_description   = "Triggers if the heartbeat is missing for 3 consecutive evaluation periods."
+  treat_missing_data  = "breaching"
+
+  period              = 300
+  evaluation_periods  = 3
+  datapoints_to_alarm = 3
+
+  dimensions = {
+    TopicName = aws_sns_topic.watchdog.name
+  }
+  alarm_actions = [data.aws_sns_topic.page.arn]
+  ok_actions    = [data.aws_sns_topic.page.arn]
+  depends_on    = [aws_ecs_service.alertmanager]
 }
