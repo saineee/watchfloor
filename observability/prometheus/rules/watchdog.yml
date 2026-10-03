@@ -1,0 +1,9 @@
+groups:
+   - name: watchdog
+     rules:
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          heartbeat: "true"
+        annotations:
+          summary: "Always firing. Feeds the heartbeat alarm in CloudWatch. If this stops, alerting is down."
