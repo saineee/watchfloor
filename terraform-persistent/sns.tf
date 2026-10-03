@@ -41,7 +41,7 @@ resource "aws_iam_role_policy" "alert_pub" {
     Statement = [{
       Action   = ["sns:Publish"]
       Effect   = "Allow"
-      Resource = [aws_sns_topic.ticket.arn, aws_sns_topic.page.arn, "arn:aws:sns:${data.aws_region.current}-east-1:${data.aws_caller_identity.current.account_id}:watchfloor-watchdog"]
+      Resource = [aws_sns_topic.ticket.arn, aws_sns_topic.page.arn, "arn:aws:sns:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:watchfloor-watchdog"]
     }]
   })
 }
