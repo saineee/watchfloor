@@ -172,6 +172,10 @@ resource "aws_ecs_service" "alertmanager" {
   task_definition = aws_ecs_task_definition.alertmanager.arn
   desired_count   = 1
   launch_type     = "FARGATE"
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   network_configuration {
     subnets          = var.private_subnets_ids
     security_groups  = [var.alertmanager_sg]
@@ -240,11 +244,17 @@ resource "aws_ecs_task_definition" "prometheus" {
 }
 
 resource "aws_ecs_service" "prometheus" {
-  name            = "${var.name_prefix}-obs-prometheus-service"
-  cluster         = var.cluster_arn
-  task_definition = aws_ecs_task_definition.prometheus.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                               = "${var.name_prefix}-obs-prometheus-service"
+  cluster                            = var.cluster_arn
+  deployment_minimum_healthy_percent = 0
+  deployment_maximum_percent         = 100
+  task_definition                    = aws_ecs_task_definition.prometheus.arn
+  desired_count                      = 1
+  launch_type                        = "FARGATE"
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   network_configuration {
     subnets          = var.private_subnets_ids
     security_groups  = [var.prom_sg]
@@ -303,6 +313,10 @@ resource "aws_ecs_service" "grafana" {
   desired_count          = 1
   enable_execute_command = true
   launch_type            = "FARGATE"
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   network_configuration {
     subnets          = var.private_subnets_ids
     security_groups  = [var.graf_sg]
