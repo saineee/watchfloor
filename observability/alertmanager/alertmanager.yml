@@ -11,6 +11,7 @@ route:
       matchers:
         - heartbeat = "true"
       repeat_interval: 5m
+      group_interval: 1m
 receivers:
   - name: default
   - name: sns-page
