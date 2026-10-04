@@ -7,11 +7,12 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "main" {
-  name        = "${var.name_prefix}-alb-tg"
-  port        = 8000
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = var.vpc_id
+  name                 = "${var.name_prefix}-alb-tg"
+  port                 = 8000
+  deregistration_delay = 30
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = var.vpc_id
 
   health_check {
     path = "/healthz"
