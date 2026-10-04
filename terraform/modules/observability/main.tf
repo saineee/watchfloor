@@ -320,20 +320,36 @@ resource "aws_sns_topic" "watchdog" {
 resource "aws_cloudwatch_metric_alarm" "watchdog" {
   alarm_name          = "${var.name_prefix}-deadmans-switch"
   comparison_operator = "LessThanThreshold"
-  metric_name         = "NumberOfMessagesPublished"
-  namespace           = "AWS/SNS"
-  statistic           = "Sum"
   threshold           = 1
-  alarm_description   = "Triggers if the heartbeat is missing for 3 consecutive evaluation periods."
+  alarm_description   = "Hearbeat count per 5 mins with gaps filled as 0. Alarms after 3 consecutive empty windows."
   treat_missing_data  = "breaching"
 
-  period              = 300
+  metric_query {
+    id          = "e1"
+    expression  = "FILL(m1, 0)"
+    label       = "HeartbeatFilled"
+    return_data = true
+  }
+
+  metric_query {
+    id = "m1"
+
+    metric {
+      metric_name = "NumberOfMessagesPublished"
+      namespace   = "AWS/SNS"
+      stat        = "Sum"
+      period      = 300
+
+      dimensions = {
+        TopicName = aws_sns_topic.watchdog.name
+      }
+    }
+    return_data = false
+  }
+
   evaluation_periods  = 3
   datapoints_to_alarm = 3
 
-  dimensions = {
-    TopicName = aws_sns_topic.watchdog.name
-  }
   alarm_actions = [data.aws_sns_topic.page.arn]
   ok_actions    = [data.aws_sns_topic.page.arn]
   depends_on    = [aws_ecs_service.alertmanager]
