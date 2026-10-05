@@ -12,6 +12,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      REPOSITORY: 'watchfloor-api'
+      IMAGE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -20,16 +23,24 @@ jobs:
           aws-region: 'us-east-1'
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
-      - name: Build, tag, and push to ECR
-        id: build
+      - run: |
+          if aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+             echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+             echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          REPOSITORY: 'watchfloor-api'
-          IMAGE_TAG: ${{ github.ref_name }}
+        id: check
+        name: Check if current tag already exists
+      - name: Build, tag, and push to ECR
+        if: steps.check.outputs.exists == 'false'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" backend/
           docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
-          echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
       - run: aws ecs describe-task-definition --task-definition watchfloor-api --query taskDefinition --output json > task-definition.json
         name: describe
       - uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -37,7 +48,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: 'watchfloor-api'
-          image: ${{ steps.build.outputs.image }}
+          image: ${{ steps.check.outputs.image }}
       - run: |
           # shellcheck disable=SC2016
           # backticks are there for literal comma character
