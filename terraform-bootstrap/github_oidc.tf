@@ -95,7 +95,7 @@ resource "aws_iam_role_policy" "github_deploy_role_policy" {
       Resource = "*"
       Sid      = "watchfloorGetAuthToken"
       }, {
-      Action   = ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage"]
+      Action   = ["ecr:BatchCheckLayerAvailability", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage", "ecr:DescribeImages"]
       Effect   = "Allow"
       Resource = "arn:aws:ecr:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:repository/${var.name_prefix}-api"
       Sid      = "ecrCollection"
