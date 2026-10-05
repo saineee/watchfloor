@@ -14,12 +14,42 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.services.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: |
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            echo 'services=["prometheus", "grafana", "alertmanager"]' >> "$GITHUB_OUTPUT"
+          else
+            changed=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+            if grep -q '^.github/workflows/observability-cd.yml$' <<< "$changed"; then
+              echo 'services=["prometheus", "grafana", "alertmanager"]' >> "$GITHUB_OUTPUT"
+            else
+              list=()
+              for svc in prometheus grafana alertmanager; do
+                grep -q "^observability/$svc/" <<< "$changed" && list+=("$svc")
+              done
+              json_array=$(jq -cn '$ARGS.positional' --args "${list[@]}")
+              echo "services=$json_array" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        id: services
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
   push:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.services != '[]' }}
     strategy:
       fail-fast: false
       matrix:
-        service: [prometheus, grafana, alertmanager]
-    runs-on: ubuntu-latest
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -36,7 +66,6 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           SERVICE: ${{ matrix.service }}
         run: |
-          # build all 3 via matrix because all dockerfiles are only 2 or 3 layers
           docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" "observability/$SERVICE"
           docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
           echo "image=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
