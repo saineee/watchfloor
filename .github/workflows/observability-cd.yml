@@ -2,12 +2,12 @@ name: Observability CD Pipeline
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'observability/**'
       - '.github/workflows/observability-cd.yml'
-    workflow_dispatch:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   id-token: write
