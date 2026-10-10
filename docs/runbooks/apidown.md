@@ -2,13 +2,17 @@
 
 ## Summary
 
-Prometheus cannot reach the API's `/metrics` endpoint. Severity: page
+Prometheus cannot reach the API's `/metrics` endpoint or there is no scrape target at all. Severity: page
 
 ## Description
 
-This alert is triggered when the `up` metric has been at a value of 0 for 2 or more continuous minutes. This alert will
-not fire at all when a task is not registered in Cloud Map for the reason that the `up` metric will disappear instead.
+This alert is triggered when the `up` metric has been at a value of 0 for 2 or more continuous minutes or `absent()`
+has been at a value of 1 for 2 or more continuous minutes.
+
 `up`: Prometheus' record of whether the last scrape succeeded
+
+`absent()`: Populates when every task's `up` metric has disappeared. There is no instance IP because absent is a
+job-level result, not a metric for every task.
 
 ## Impact
 
@@ -20,6 +24,10 @@ from the ALB(502/503).
 
 **Any `terraform apply` in this runbook: Make sure you read the plan first and if it includes unrelated changes, stop
 and escalate immediately**
+
+## Fixes
+
+Every action that says "restore", "roll back", or "deploy" refers to [Mitigation](#mitigation) at the bottom.
 
 ## First Checks
 
@@ -94,7 +102,7 @@ TASK_ARN=$(aws ecs list-tasks --cluster watchfloor-cluster --service-name watchf
 echo "$TASK_ARN"
 ```
 
-**If this prints `None`, no API task is running. Go to ECS**
+**If this prints `None`, absent() should be present. Go to ECS**
 
 ```bash
 TASK_IP="$(aws ecs describe-tasks --cluster watchfloor-cluster --tasks "$TASK_ARN" --query "tasks[0].attachments[0].details[?name=='privateIPv4Address'].value" --output text)"
@@ -109,7 +117,7 @@ echo "$TASK_IP - $CLOUDMAP_IP"
 | Matching             | Cloud Map is correct, move to hop 3                                                             |
 | Different briefly    | Cloud Map may have an outdated cache, but should replace it with the new task within 30 seconds |
 | Different persistent | Cloud Map is pointing to a dead task                                                            |
-| Cloud Map IP empty   | No instance is registered, therefore Prometheus has no scrape target                            |
+| Cloud Map IP empty   | No instance is registered, therefore Prometheus has no scrape target. Go to **ECS**             |
 
 3. **Security Group**
 
@@ -188,17 +196,17 @@ for the targets page. Until implemented, escalate.
 
 ## ECS
 
-### Check 1 ###
+### Check 1
 
 ```bash
 aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service --query "services[].{A_Running:runningCount, B_Desired:desiredCount}" --output text
 ```
 
-| Result | Meaning                                                                       | Action                                                                                                                                                                                                                                                                                           |
-|--------|-------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1/1    | ECS is fine, but ALB declares task as unhealthy                               | `TG="$(aws elbv2 describe-target-groups --query "TargetGroups[?TargetGroupName=='watchfloor-alb-tg'].TargetGroupArn" --output text)"`<br>`aws elbv2 describe-target-health --target-group-arn "$TG" --query "TargetHealthDescriptions[].TargetHealth.{State:State,Reason:Reason}" --output text` |
-| 0/1    | Exec role can't pull image/App crashing/Ran out of IPs                        | Go To **Check 2 & Check 3**                                                                                                                                                                                                                                                                      |
-| 0/0    | ECS desired count was set to 0, either via a Terraform change or the AWS CLI. | `terraform plan` and review, only apply if every change is expected - **Who did it**: `aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=UpdateService --max-results 5`                                                                                     |
+| Result | Meaning                                                                                                  | Action                                                                                                                                                                                                                                                                                           |
+|--------|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1/1    | ECS is fine, but ALB declares task as unhealthy                                                          | `TG="$(aws elbv2 describe-target-groups --query "TargetGroups[?TargetGroupName=='watchfloor-alb-tg'].TargetGroupArn" --output text)"`<br>`aws elbv2 describe-target-health --target-group-arn "$TG" --query "TargetHealthDescriptions[].TargetHealth.{State:State,Reason:Reason}" --output text` |
+| 0/1    | Exec role can't pull image/App crashing/Ran out of IPs                                                   | Go To **Check 2 & Check 3**                                                                                                                                                                                                                                                                      |
+| 0/0    | ECS desired count was set to 0, either via a Terraform change or the AWS CLI. absent() metric will fire. | `terraform plan` and review, only apply if every change is expected - **Who did it**: `aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,AttributeValue=UpdateService --max-results 5`                                                                                     |
 
 | Target Health | Meaning                                                            |
 |---------------|--------------------------------------------------------------------|
@@ -220,7 +228,7 @@ aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-ser
 | has started 1 tasks repeating, with no steady state | Task started, then died. Crash or health check loop | **Check 3** for the stopped reason              |
 | registered 1 targets in (target-group)              | New task joined the ALB                             | No action, normal during recovery               | 
 
-### Check 3 ###
+### Check 3
 
 ```bash
 TASKS=$(aws ecs list-tasks --cluster watchfloor-cluster --service-name watchfloor-service --desired-status STOPPED --query 'taskArns[0]' --output text)
@@ -239,14 +247,12 @@ aws ecs describe-tasks --cluster watchfloor-cluster --tasks "$TASKS" --query 'ta
 
 **IMPORTANT**   
 ECS only holds stopped tasks for about 1 hour, so if it's gone, the evidence has expired. Fall back to the service
-events and logs.  
-After a fresh `terraform apply` workflow run, the API shows `CannotPullContainerError` for `:latest` until a release is
-deployed. This is an expected behavior. Re-run the latest tag release.
+events and logs.
 
-| Result                      | Meaning                                             | Action                                                                                                                                                                                     |
-|-----------------------------|-----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| CannotPullContainerError    | Network Error/Exec role issue/Image reference issue | see **Image pull failure** below                                                                                                                                                           |
-| Essential container exited  | Exit code 1: App crashed, Exit code: 137, killed    | see **Check 4** for logs                                                                                                                                                                   |
+| Result                      | Meaning                                             | Action                                                                                                                                                                                      |
+|-----------------------------|-----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CannotPullContainerError    | Network Error/Exec role issue/Image reference issue | see **Image pull failure** below                                                                                                                                                            |
+| Essential container exited  | Exit code 1: App crashed, Exit code: 137, killed    | see **Check 4** for logs                                                                                                                                                                    |
 | ResourceInitializationError | Could not fetch a secret from SSM                   | see `/terraform/modules/ecs/main.tf` - `resource.aws_iam_role_policy.exec_role_ssm_policy`, make sure `ssm:GetParameters on Resources = [var.database_url_ssm_arn, var.secret_key_ssm_arn]` |
 
 **Image pull failure**
@@ -254,6 +260,10 @@ deployed. This is an expected behavior. Re-run the latest tag release.
 ```bash
 IMAGE=$(aws ecs describe-task-definition --task-definition watchfloor-api --query "taskDefinition.containerDefinitions[0].image" --output text)
 ```
+
+**If the image contains an '@', use the digest commands below, otherwise use the tag commands.**
+
+**TAG**
 
 ```bash
 TAG="${IMAGE##*:}"
@@ -263,11 +273,21 @@ TAG="${IMAGE##*:}"
 aws ecr describe-images --repository-name watchfloor-api --image-ids imageTag="$TAG"
 ```
 
-| Result                                      | Meaning                                         | Action                                                                                                                                        | 
-|---------------------------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| ImageNotFoundException                      | Tag does not exist                              | deploy a tag that exists by re-running a backend-cd workflow (newest one)                                                                     |
-| Tag exists, error mentions "access denied"  | Execution role does not have the correct policy | Check execution role policy for `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `ecr:GetAuthorizationToken`, and restore through Terraform |
-| Tag exists, but timeout or connection issue | Task is not able to reach ECR over the network  | Check private subnets route through NAT gateway via `terraform plan`                                                                          |
+**DIGEST**
+
+```bash
+DIGEST="${IMAGE##*@}"
+```
+
+```bash
+aws ecr describe-images --repository-name watchfloor-api --image-ids imageDigest="$DIGEST"
+```
+
+| Result                                        | Meaning                                         | Action                                                                                                                                        | 
+|-----------------------------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| ImageNotFoundException                        | Image does not exist                            | deploy a tag that exists by re-running a backend-cd workflow (newest one)                                                                     |
+| Image exists, error mentions "access denied"  | Execution role does not have the correct policy | Check execution role policy for `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer`, `ecr:GetAuthorizationToken`, and restore through Terraform |
+| Image exists, but timeout or connection issue | Task is not able to reach ECR over the network  | Check private subnets route through NAT gateway via `terraform plan`                                                                          |
 
 ### Check 4 ###
 
@@ -277,3 +297,68 @@ aws logs tail /ecs/watchfloor --since 30m --filter-pattern '{ $.level="ERROR" }'
 
 ## Networking
 
+### Check 1
+
+```bash
+ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
+```
+
+```bash
+echo "$ALB"
+```
+
+If this shows `LoadBalancerNotFound`, the ALB is down, deleted, or the stack is down. Restore it in accordance with the
+`terraform apply rule` at the top of this runbook.
+If it prints the ALB's DNS name, move to check 2.
+
+### Check 2
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://httpforever.com"
+```
+
+If this times out and prints `000`, your network is most likely the issue. However, if you receive `200` as a response,
+move to check 3.
+
+### Check 3
+
+```bash
+dig +short "$ALB"
+```
+
+If nothing is printed, the name did not resolve. So the ALB is either gone, or your DNS resolver is failing. If the DNS
+works, move to check 4.
+
+### Check 4
+
+```bash
+aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].State.Code" --output text
+```
+
+| `State.Code`      | Meaning                                  | Action                                           |
+|-------------------|------------------------------------------|--------------------------------------------------|
+| `active`          | Ready                                    | **Check 5**                                      |
+| `provisioning`    | Still being created, e.g. after an apply | Wait a few mins then re-run                      |
+| `active_impaired` | Running but degraded on AWS's side       | Check AWS Health; likely escalate to AWS Support |
+| `failed`          | AWS couldn't set up the ALB              | `terraform plan` then escalate                   |
+
+### Check 5
+
+```bash
+aws ec2 describe-security-groups --filters Name=group-name,Values=watchfloor-alb-sg --query 'SecurityGroups[].IpPermissions[?FromPort==`80`].IpRanges[]' --output text
+```
+
+If this does not return `0.0.0.0/0`, run `terraform plan`, and act in accordance with the `terraform apply` rule at the
+top of this runbook. If all 5 checks pass, try another network or a hotspot, then `terraform plan` for the ALB listener,
+routes and NACLS, then escalate.
+
+## Mitigation
+
+| Fix                                      | When                                                                                  | How |
+|------------------------------------------|---------------------------------------------------------------------------------------|-----|
+| Restore drift                            | Someone changed aws via CLI or Console, not Terraform                                 |
+| Roll back the release                    | An app code change broke something                                                    |
+| Deploy an image that exists              | The image is missing                                                                  |
+| Fix the Terraform code in a pull request | `terraform plan` is correct, but the config is wrong                                  |
+| Wait and re-check                        | Temporary: `provisioning`, `initial`, a deploy that's in progress, a Cloud Map hiccup |
+| Escalate (AWS Support, AWS Health)       | Every check passes, or `active_impaired`/`failed`                                     |
