@@ -3,11 +3,6 @@ variable "name_prefix" {
   default = "watchfloor"
 }
 
-variable "image_tag" {
-  type    = string
-  default = "latest"
-}
-
 variable "anthropic_federation_rule_id" {
   type    = string
   default = "fdrl_01HcojYraSeruSsfENyU1tpW"

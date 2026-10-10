@@ -24,9 +24,9 @@ groups:
     interval: 15s
     rules:
       - alert: APIDown
-        expr: up == 0
+        expr: up{job="watchfloor-api"} == 0 or absent(up{job="watchfloor-api"})
         for: 2m
         labels:
           severity: page
         annotations:
-          summary: "{{ $labels.instance }} is unreachable [CRITICAL]"
+          summary: "{{ $labels.job }} is unreachable [CRITICAL]"
