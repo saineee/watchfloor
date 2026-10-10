@@ -243,11 +243,11 @@ events and logs.
 After a fresh `terraform apply` workflow run, the API shows `CannotPullContainerError` for `:latest` until a release is
 deployed. This is an expected behavior. Re-run the latest tag release.
 
-| Result                      | Meaning                                             | Action                                                                                                                                                                                   |
-|-----------------------------|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| CannotPullContainerError    | Network Error/Exec role issue/Image reference issue | see **Image pull failure** below                                                                                                                                                         |
-| Essential container exited  | Exit code 1: App crashed, Exit code: 137, killed    | see **Check 4** for logs                                                                                                                                                                 |
-| ResourceInitializationError | Could not fetch a secret from SSM                   | see `/terraform/modules/ecs/main.tf`-`resource.aws_iam_role_policy.exec_role_ssm_policy`, make sure `ssm:GetParameters on Resources = [var.database_url_ssm_arn, var.secret_key_ssm_arn] |
+| Result                      | Meaning                                             | Action                                                                                                                                                                                     |
+|-----------------------------|-----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CannotPullContainerError    | Network Error/Exec role issue/Image reference issue | see **Image pull failure** below                                                                                                                                                           |
+| Essential container exited  | Exit code 1: App crashed, Exit code: 137, killed    | see **Check 4** for logs                                                                                                                                                                   |
+| ResourceInitializationError | Could not fetch a secret from SSM                   | see `/terraform/modules/ecs/main.tf` - `resource.aws_iam_role_policy.exec_role_ssm_policy`, make sure `ssm:GetParameters on Resources = [var.database_url_ssm_arn, var.secret_key_ssm_arn]` |
 
 **Image pull failure**
 
