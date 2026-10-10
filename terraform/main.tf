@@ -30,7 +30,7 @@ module "ecs" {
   private_subnet_ids           = module.vpc.private_subnet_ids
   security_group_id            = module.security.ecs_task_sg_id
   target_group_arn             = module.alb.target_group_arn
-  image                        = "${data.aws_ecr_repository.api.repository_url}:${var.image_tag}"
+  image                        = data.aws_ecr_image.api.image_uri
   database_url_ssm_arn         = module.rds.ssm_arn
   anthropic_federation_rule_id = var.anthropic_federation_rule_id
   anthropic_organization_id    = var.anthropic_organization_id
