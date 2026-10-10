@@ -1,0 +1,35 @@
+rule_files:
+  - '../rules/slo.yml'
+
+evaluation_interval: 15s
+
+tests:
+  - name: APIDownUpTest
+    interval: 15s
+    input_series:
+      - series: 'up{job="watchfloor-api", instance="10.0.1.5:8000"}'
+        values: '0x20'
+
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: APIDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: watchfloor-api
+              instance: '10.0.1.5:8000'
+            exp_annotations:
+              summary: "watchfloor-api is unreachable [CRITICAL]"
+
+  - name: APIDownAbsentTest
+    interval: 15s
+
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: APIDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: watchfloor-api
+            exp_annotations:
+              summary: "watchfloor-api is unreachable [CRITICAL]"
