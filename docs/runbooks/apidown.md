@@ -20,6 +20,23 @@ This alert could mean that the entire app stack is still technically up, but ref
 Monitoring will cease to work due to this including all SLO data. If the API backend is down, users will receive errors
 from the ALB(502/503).
 
+## Diagram
+
+```mermaid
+---
+title: Prometheus & User Paths
+---
+flowchart LR
+    USER[USER] -->|Check rules|ALBSG[ALB SG]
+    ALBSG -->|Ingress over port 80| ALB[ALB]
+    ALB -->|rule 8000 from ALB SG| APISG[API SG]
+    APISG -->|Ingress over port 8000| API[API]
+
+    PROM[PROMETHEUS] -.->|Lookup DNS| CM[Cloud Map]
+    PROM -->|rule 8000 from Prometheus SG|APISG
+```
+
+
 ## Rule
 
 **Any `terraform apply` in this runbook: Make sure you read the plan first and if it includes unrelated changes, stop
@@ -28,6 +45,10 @@ and escalate immediately**
 ## Fixes
 
 Every action that says "restore", "roll back", or "deploy" refers to [Mitigation](#mitigation) at the bottom.
+
+## Disclaimer
+
+Every command in this runbook assumes the viewer will run them in the same shell session.
 
 ## First Checks
 
@@ -41,13 +62,13 @@ ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadB
 curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/healthz"
 ```
 
-| Result | Meaning                                                                                                               | Go to                 |
-|--------|-----------------------------------------------------------------------------------------------------------------------|-----------------------|
-| 200    | ALB received a regular response from the API. Prometheus is not able to reach the API.                                | **Scrape Path**       |
-| 502    | ALB was able to send the request to the target, but the<br/>target's response was bad or connection was refused.<br/> | **ECS**               |
-| 503    | ALB does not have any healthy targets to send request to.                                                             | **ECS**               |
-| 504    | ALB sent the request but timed out trying to receive a response from the API.                                         | **Networking or ECS** |
-| 000    | Curl was not able to receive a response from the ALB.                                                                 | **Networking**        | 
+| Result | Meaning                                                                                                               | Go to                           |
+|--------|-----------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| 200    | ALB received a regular response from the API. Prometheus is not able to reach the API.                                | **Scrape Path**                 |
+| 502    | ALB was able to send the request to the target, but the<br/>target's response was bad or connection was refused.<br/> | **ECS**                         |
+| 503    | ALB does not have any healthy targets to send request to.                                                             | **ECS**                         |
+| 504    | ALB sent the request but timed out trying to receive a response from the API.                                         | **Networking Check 6 then ECS** |
+| 000    | Curl was not able to receive a response from the ALB.                                                                 | **Networking**                  | 
 
 ## Scrape Path
 
@@ -102,7 +123,7 @@ TASK_ARN=$(aws ecs list-tasks --cluster watchfloor-cluster --service-name watchf
 echo "$TASK_ARN"
 ```
 
-**If this prints `None`, absent() should be present. Go to ECS**
+**If this prints `None`, APIDown's absent() case: no task is running. Go to ECS**
 
 ```bash
 TASK_IP="$(aws ecs describe-tasks --cluster watchfloor-cluster --tasks "$TASK_ARN" --query "tasks[0].attachments[0].details[?name=='privateIPv4Address'].value" --output text)"
@@ -155,8 +176,7 @@ aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$PROM_SG" 
 **Important**: If after running `terraform plan` in the `/terraform` directory you see that there is a change to the
 security group, that is drift. Review the plan, and only apply if every change is expected. If there
 are no changes after running `terraform plan`, then someone has most likely merged the wrong port on the security group.
-Make sure that the `watchfloor-ecs-task-sg` is referencing `watchfloor-prometheus-sg` inbound on port 8000.
-`watchfloor-prometheus-sg`
+Make sure that the `watchfloor-ecs-task-sg` is referencing `watchfloor-prometheus-sg` inbound on port 8000. `watchfloor-prometheus-sg`
 conversely should be outbound on all ports. `cidr_ipv4` should be equal to `"0.0.0.0/0"`, and ip_protocol should be
 equal to `"-1"`. Prometheus needs outbound access to the API over port 8000, Alertmanager over 9093, and EFS over 2049.
 The groups themselves cannot be missing here. A missing Prometheus group OR egress rule would page the deadman's switch
@@ -180,6 +200,7 @@ curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/metrics"
 | 401/403 | Auth has been added in front of the route                                                 | A code change broke `/metrics`. Check what the last API tagged release changed, and roll back to the previous task definition revision |
 | 500     | Metrics collection is erroring                                                            | A code change broke `/metrics`. Check what the last API tagged release changed, and roll back to the previous task definition revision |
 | 000     | Timed out, likely a metric-cardinality growth issue where too many metrics are being sent | Look at API latency and errors with the saved Log Insights queries in Cloud Watch.                                                     |
+| 504     | The API SG no longer allows the ALB on port 8000                                          | **Networking Check 6**                                                                                                                 |
 
 **Planned, not yet available**: Navigate to the repo and go to `/scripts`. In that folder you will find
 `grafana_tunnel.sh`. Run the script from the directory using `./grafana_tunnel.sh -p` to forward to the Prometheus UI
@@ -350,15 +371,92 @@ aws ec2 describe-security-groups --filters Name=group-name,Values=watchfloor-alb
 
 If this does not return `0.0.0.0/0`, run `terraform plan`, and act in accordance with the `terraform apply` rule at the
 top of this runbook. If all 5 checks pass, try another network or a hotspot, then `terraform plan` for the ALB listener,
-routes and NACLS, then escalate.
+routes and NACLs, then escalate.
+
+### Check 6 (504 Error)
+
+```bash
+ALB_SG="$(aws ec2 describe-security-groups --filters "Name=group-name,Values=watchfloor-alb-sg" --query "SecurityGroups[].GroupId" --output text)"
+```
+
+```bash
+API_SG="$(aws ec2 describe-security-groups --filters "Name=group-name,Values=watchfloor-ecs-task-sg" --query "SecurityGroups[].GroupId" --output text)"
+```
+
+```bash
+aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$API_SG" --query "SecurityGroupRules[?IsEgress==\`false\` && ReferencedGroupInfo.GroupId=='$ALB_SG'].{FromPort: FromPort, ToPort: ToPort}" --output text
+```
+
+If this returns `8000 8000`, the ALB-API route is fine. Move to **ECS**. If nothing returns, the rule from the ALB is
+gone, so the ALB will return 504. `terraform plan` will show it as drift, restore it in accordance with the `terraform apply` rule.
 
 ## Mitigation
 
-| Fix                                      | When                                                                                  | How |
-|------------------------------------------|---------------------------------------------------------------------------------------|-----|
-| Restore drift                            | Someone changed aws via CLI or Console, not Terraform                                 |
-| Roll back the release                    | An app code change broke something                                                    |
-| Deploy an image that exists              | The image is missing                                                                  |
-| Fix the Terraform code in a pull request | `terraform plan` is correct, but the config is wrong                                  |
-| Wait and re-check                        | Temporary: `provisioning`, `initial`, a deploy that's in progress, a Cloud Map hiccup |
-| Escalate (AWS Support, AWS Health)       | Every check passes, or `active_impaired`/`failed`                                     |
+| Fix                                      | When                                                                                  | How                                                                                                                                                                                                                                                                                                                               |
+|------------------------------------------|---------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Restore drift                            | Someone changed AWS via CLI or Console, not Terraform                                 | run `terraform plan` in the affected root. Make sure that all changes are expected, if so `terraform apply` and confirm.                                                                                                                                                                                                          |
+| Roll back the release                    | An app code change broke something                                                    | run `aws ecs list-task-definitions --family-prefix watchfloor-api --sort DESC --query "taskDefinitionArns[1:4]"`, start from the newest number then `aws ecs update-service --cluster watchfloor-cluster --service watchfloor-service --task-definition watchfloor-api:<N>` caveat: **check 1** shows the running task definition |
+| Deploy an image that exists              | The image is missing                                                                  | run the backend-cd workflow (`v0.1.6` or later, never an older tag)                                                                                                                                                                                                                                                               |
+| Fix the Terraform code in a pull request | `terraform plan` shows no changes, but the config is incorrect                        | Open a feature branch with `git switch -c <branch>`, stage changes, commit, then push. Create a pull request with `gh pr create --fill`, and then rebase+merge on GitHub. After merging, run the apply workflow (or apply by CLI for bootstrap and persistent).                                                                   |
+| Wait and re-check                        | Temporary: `provisioning`, `initial`, a deploy that's in progress, a Cloud Map hiccup | Wait 3-5 minutes then re-run the check that sent you here                                                                                                                                                                                                                                                                         |
+| Escalate (AWS Support, AWS Health)       | Every check passes, or `active_impaired`/`failed`                                     | If the runbook has exhausted all options, escalate to the service owner. If evidence points to AWS, check AWS Health at `health.aws.amazon.com`, then the AWS re:Post community forums, and on a paid plan, open a technical support case.                                                                                        |                                                                                                                                     
+
+## Verify Resolved
+
+### Check 1
+
+```bash
+ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
+```
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/healthz"
+```
+
+Confirm response `200`
+
+### Check 2
+
+```bash
+aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service --query "services[].{A_Running:runningCount, B_Desired:desiredCount}" --output text
+```
+
+Confirm `1 1`
+
+### Check 3
+
+```bash
+NAMESPACE=$(aws servicediscovery list-namespaces --query "Namespaces[?Name=='watchfloor.local'].Id" --output text)
+```  
+
+```bash
+SVC_ID=$(aws servicediscovery list-services --filters "Name=NAMESPACE_ID,Values=$NAMESPACE" --query "Services[?Name=='api'].Id" --output text)
+```   
+
+```bash
+CLOUDMAP_IP="$(aws servicediscovery list-instances --service-id "$SVC_ID" --query "Instances[].Attributes.AWS_INSTANCE_IPV4" --output text)"
+```  
+
+```bash
+TASK_ARN=$(aws ecs list-tasks --cluster watchfloor-cluster --service-name watchfloor-service --query "taskArns[0]" --output text)
+```
+
+```bash
+TASK_IP="$(aws ecs describe-tasks --cluster watchfloor-cluster --tasks "$TASK_ARN" --query "tasks[0].attachments[0].details[?name=='privateIPv4Address'].value" --output text)"
+```
+
+```bash
+echo "$TASK_IP - $CLOUDMAP_IP"
+```
+
+Confirm that the Task IP and the CloudMap IP Match.
+
+### Check 4
+
+Run `./grafana_tunnel.sh` from the `/scripts` directory. Log into Grafana and query `up{job="watchfloor-api"}` in
+Grafana Explore. The script will copy the Grafana password to your clipboard with username 'admin'. Success is up
+returns 1.
+
+### Check 5
+
+Confirm a resolution of the alert arrived in your email inbox.
