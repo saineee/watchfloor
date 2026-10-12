@@ -5,7 +5,7 @@ import anthropic
 import pydantic
 from app.llm import hash_input, triage
 from app.metrics import ALERTS_INGESTED, TRIAGE_DURATION, TRIAGE_OUTCOMES
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy import select
 from app.database import get_db
 from app.models import Alert, AlertStatus, ALLOWED_TRANSITIONS
@@ -142,12 +142,19 @@ async def triage_alert(alert_id: int, db: AsyncSession = Depends(get_db)):
             TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
             raise HTTPException(status_code=502, detail="Validation error")
         TRIAGE_DURATION.observe(time.perf_counter() - start)
-        triage_outcome = "completed"
-        TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
         alert.summary = result.summary
         alert.severity = result.severity
         alert.triage_source_hash = fingerprint
-        await db.commit()
+        try:
+            await db.commit()
+        except SQLAlchemyError:
+            await db.rollback()
+            triage_outcome = "failed"
+            TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
+            logger.exception("Database error for alert", extra={"alert_id": alert_id})
+            raise HTTPException(status_code=503, detail="Database error: problem committing to database")
+        triage_outcome = "completed"
+        TRIAGE_OUTCOMES.labels(outcome=triage_outcome).inc()
         await db.refresh(alert)
     else:
         logger.info("Alert is already triaged", extra={"alert_id": alert_id})
