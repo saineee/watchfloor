@@ -2,6 +2,11 @@ name: Terraform Apply Pipeline
 
 on:
   workflow_dispatch:
+    inputs:
+      enable_cloudfront:
+        description: Enable or disable cloudfront
+        type: boolean
+        default: false
 
 jobs:
   tf-apply:
@@ -27,4 +32,6 @@ jobs:
         run: terraform init
 
       - name: terraform apply
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve -var="enable_cloudfront=$ENABLE_CLOUDFRONT" -input=false
+        env:
+          ENABLE_CLOUDFRONT: ${{ inputs.enable_cloudfront }}
