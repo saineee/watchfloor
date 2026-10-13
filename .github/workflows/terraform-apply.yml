@@ -35,3 +35,37 @@ jobs:
         run: terraform apply -auto-approve -var="enable_cloudfront=$ENABLE_CLOUDFRONT" -input=false
         env:
           ENABLE_CLOUDFRONT: ${{ inputs.enable_cloudfront }}
+
+      - id: migrate-config
+        name: run migrations (alembic)
+        run: |
+          td="$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service --query "services[0].taskDefinition" --output text)"
+          # shellcheck disable=SC2016
+          subnets="$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets|join(`,`,@)' --output text)"
+          # shellcheck disable=SC2016
+          sgroups="$(aws ecs describe-services --cluster watchfloor-cluster --services watchfloor-service \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups|join(`,`,@)' --output text)"
+          echo "task_arn=$(aws ecs run-task \
+            --cluster "watchfloor-cluster" \
+            --launch-type "FARGATE" \
+            --task-definition "$td" \
+            --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$sgroups],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides": [{"name": "watchfloor-api", "command": ["alembic", "upgrade", "head"]}]}' \
+            --query "tasks[0].taskArn" \
+            --output text)" >> "$GITHUB_OUTPUT"
+
+      - id: wait-on-task-completion
+        name: wait on migration
+        run: |
+          aws ecs wait tasks-stopped --cluster "watchfloor-cluster" \
+            --tasks "$task_arn"
+          exit_code="$(aws ecs describe-tasks --cluster watchfloor-cluster --tasks "$task_arn" \
+          --query "tasks[0].{ExitCode:containers[0].exitCode}" --output text)"
+          if [[ ! "$exit_code" =~ ^[0-9]+$ ]] || (( exit_code != 0 )); then
+            echo "$task_arn exited with code $exit_code" >&2
+            exit 1
+          fi
+        env:
+          task_arn: ${{ steps.migrate-config.outputs.task_arn }}
+          
