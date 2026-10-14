@@ -4,6 +4,25 @@
 
 Prometheus cannot reach the API's `/metrics` endpoint or there is no scrape target at all. Severity: page
 
+## Which mode am I on?
+
+```bash
+CF="$(aws cloudfront list-distributions --query "DistributionList.Items[0].DomainName" --output text)"
+```
+
+```bash
+ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
+```
+
+```bash
+if [ "$CF" = "None" ] || [ -z "$CF" ]; then TARGET="http://$ALB"; echo "test mode"; else TARGET="https://$CF"; echo "demo mode"; fi
+```
+
+| Result    | Mode          | $TARGET                |
+|-----------|---------------|------------------------|
+| test mode | ALB is open   | http://<alb>           |
+| demo mode | ALB is locked | https://<distribution> |
+
 ## Description
 
 This alert is triggered when the `up` metric has been at a value of 0 for 2 or more continuous minutes or `absent()`
@@ -36,7 +55,6 @@ flowchart LR
     PROM -->|rule 8000 from Prometheus SG|APISG
 ```
 
-
 ## Rule
 
 **Any `terraform apply` in this runbook: Make sure you read the plan first and if it includes unrelated changes, stop
@@ -52,14 +70,32 @@ Every command in this runbook assumes the viewer will run them in the same shell
 
 ## First Checks
 
-Run these commands in sequential order.
+Make sure you refer to [Which mode am I on?](#which-mode-am-i-on) before running these commands.
+
+If on demo mode run these commands:
 
 ```bash
-ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
+CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[0].Id" --output text)
 ```
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/healthz"
+aws cloudfront get-distribution-config --id "$CF_ID" --query "DistributionConfig.Origins.Items[0].CustomHeaders.Items[?HeaderName=='X-Origin-Verify'].HeaderValue" --output text
+```
+
+```bash
+LISTENER=$(aws elbv2 describe-listeners --load-balancer-arn "$(aws elbv2 describe-load-balancers --names watchfloor-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text)" --query "Listeners[0].ListenerArn" --output text)
+```
+
+```bash
+aws elbv2 describe-rules --listener-arn "$LISTENER" --query "Rules[].Conditions[?Field=='http-header'].HttpHeaderConfig.Values[]" --output text
+```
+
+| Result | Meaning                                                                                                                           | Action                                                         |
+|--------|-----------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| 403    | CloudFront reached the ALB, but the `X-Origin-Verify` value does not match the listener rule, so it 403'ed due to fixed-response. | Compare the two secrets, then restore drift via **Mitigation** |
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "$TARGET/healthz"
 ```
 
 | Result | Meaning                                                                                                               | Go to                           |
@@ -176,31 +212,30 @@ aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$PROM_SG" 
 **Important**: If after running `terraform plan` in the `/terraform` directory you see that there is a change to the
 security group, that is drift. Review the plan, and only apply if every change is expected. If there
 are no changes after running `terraform plan`, then someone has most likely merged the wrong port on the security group.
-Make sure that the `watchfloor-ecs-task-sg` is referencing `watchfloor-prometheus-sg` inbound on port 8000. `watchfloor-prometheus-sg`
+Make sure that the `watchfloor-ecs-task-sg` is referencing `watchfloor-prometheus-sg` inbound on port 8000.
+`watchfloor-prometheus-sg`
 conversely should be outbound on all ports. `cidr_ipv4` should be equal to `"0.0.0.0/0"`, and ip_protocol should be
 equal to `"-1"`. Prometheus needs outbound access to the API over port 8000, Alertmanager over 9093, and EFS over 2049.
 The groups themselves cannot be missing here. A missing Prometheus group OR egress rule would page the deadman's switch
 instead, and AWS will not allow you to delete a group attached to a running task.
 
 4. **/metrics**
-   Run these commands in sequential order.
 
-```bash
-ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
-```
+Navigate to `/scripts` and type `./grafana_tunnel.sh` from the directory. Username is admin and the password is copied
+to your clipboard. Navigate to Grafana Explore.
+Run these queries:
 
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/metrics"
-```
+1) `up{job="watchfloor-api"}`
+2) `scrape_duration_seconds{job="watchfloor-api"}`
+3) `scrape_samples_scraped{job="watchfloor-api"}`
 
-| Result  | Meaning                                                                                   | Action                                                                                                                                 |
-|---------|-------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| 200     | The `/metrics` endpoint answers                                                           | Confirm APIDown is still firing. If so, check the Prometheus targets page for the scrape error, then escalate.                         |
-| 404     | Route is deleted or moved                                                                 | A code change broke `/metrics`. Check what the last API tagged release changed, and roll back to the previous task definition revision |
-| 401/403 | Auth has been added in front of the route                                                 | A code change broke `/metrics`. Check what the last API tagged release changed, and roll back to the previous task definition revision |
-| 500     | Metrics collection is erroring                                                            | A code change broke `/metrics`. Check what the last API tagged release changed, and roll back to the previous task definition revision |
-| 000     | Timed out, likely a metric-cardinality growth issue where too many metrics are being sent | Look at API latency and errors with the saved Log Insights queries in Cloud Watch.                                                     |
-| 504     | The API SG no longer allows the ALB on port 8000                                          | **Networking Check 6**                                                                                                                 |
+| up | scrape_duration_seconds    | scrape_samples_scraped | Possible meaning                                                                  |
+|----|----------------------------|------------------------|-----------------------------------------------------------------------------------|
+| 1  | Normal (1 second or lower) | Hundreds               | Healthy: `/metrics` is fine, so the problem is somewhere else                     |
+| 0  | About 10 seconds           | 0                      | The endpoint is too slow, or the path is blocked **Refer to hop 3**               |
+| 0  | Fast                       | 0                      | Answered but the response is possibly malformed. Rollback **Refer to mitigation** |
+
+For the exact error, use the targets page (planned, not yet available), then escalate.
 
 **Planned, not yet available**: Navigate to the repo and go to `/scripts`. In that folder you will find
 `grafana_tunnel.sh`. Run the script from the directory using `./grafana_tunnel.sh -p` to forward to the Prometheus UI
@@ -318,6 +353,25 @@ aws logs tail /ecs/watchfloor --since 30m --filter-pattern '{ $.level="ERROR" }'
 
 ## Networking
 
+Note: curling the ALB on demo mode will return 000 due to timing out, this is intentional.
+
+If on Demo Mode, run these commands:
+
+```bash
+CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[0].Id" --output text)
+```
+
+```bash
+aws cloudfront get-distribution --id "$CF_ID" --query "Distribution.{Status:Status,Enabled:DistributionConfig.Enabled}" --output table
+```
+
+| Status/Enabled      | Meaning                               | Action                                      |
+|---------------------|---------------------------------------|---------------------------------------------|
+| `Deployed`/`True`   | Healthy and serving traffic           | Continue with networking checks             |
+| `InProgress`/`True` | Still rolling out (couple of minutes) | Wait and re-check                           |
+| Any/`False`         | The distribution is disabled          | `terraform plan`, then apply under the rule |
+| An error/`None`     | You're on test mode                   | Re-run **Which mode am I on?**              |
+
 ### Check 1
 
 ```bash
@@ -365,11 +419,25 @@ aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancer
 
 ### Check 5
 
+Run:
+
 ```bash
-aws ec2 describe-security-groups --filters Name=group-name,Values=watchfloor-alb-sg --query 'SecurityGroups[].IpPermissions[?FromPort==`80`].IpRanges[]' --output text
+aws ec2 describe-security-groups --filters "Name=group-name,Values=watchfloor-alb-sg" --query 'SecurityGroups[0].IpPermissions[?FromPort==`80`].{Cidr:IpRanges[0].CidrIp,PrefixList:PrefixListIds[0].PrefixListId}' --output table
 ```
 
-If this does not return `0.0.0.0/0`, run `terraform plan`, and act in accordance with the `terraform apply` rule at the
+Demo Mode: CloudFront's prefix list ID, which should match the `PrefixList` above.
+
+```bash
+aws ec2 describe-managed-prefix-lists --filters "Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing" --query "PrefixLists[0].PrefixListId" --output text
+```
+
+| Mode | Expected                                                 |
+|------|----------------------------------------------------------|
+| Test | `Cidr` = `0.0.0.0/0`, `PrefixList` = `None`              |
+| Demo | `Cidr` = `None`, `PrefixList` = The CloudFront list's ID |
+
+If this does not return the expected response in the table above according to the mode you're on, run `terraform plan`,
+and act in accordance with the `terraform apply` rule at the
 top of this runbook. If all 5 checks pass, try another network or a hotspot, then `terraform plan` for the ALB listener,
 routes and NACLs, then escalate.
 
@@ -388,7 +456,8 @@ aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$API_SG" -
 ```
 
 If this returns `8000 8000`, the ALB-API route is fine. Move to **ECS**. If nothing returns, the rule from the ALB is
-gone, so the ALB will return 504. `terraform plan` will show it as drift, restore it in accordance with the `terraform apply` rule.
+gone, so the ALB will return 504. `terraform plan` will show it as drift, restore it in accordance with the
+`terraform apply` rule.
 
 ## Mitigation
 
@@ -406,11 +475,7 @@ gone, so the ALB will return 504. `terraform plan` will show it as drift, restor
 ### Check 1
 
 ```bash
-ALB="$(aws elbv2 describe-load-balancers --names "watchfloor-alb" --query "LoadBalancers[0].DNSName" --output text)"
-```
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "http://$ALB/healthz"
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "$TARGET/healthz"
 ```
 
 Confirm response `200`
