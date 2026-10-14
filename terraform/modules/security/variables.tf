@@ -5,3 +5,7 @@ variable "vpc_id" {
 variable "name_prefix" {
   type = string
 }
+
+variable "lock" {
+  type = bool
+}

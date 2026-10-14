@@ -3,12 +3,26 @@ resource "aws_security_group" "alb_sg" {
   name   = "${var.name_prefix}-alb-sg"
 }
 
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  name = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "alb_sg_ingress" {
+  count             = var.lock ? 0 : 1
   security_group_id = aws_security_group.alb_sg.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
   ip_protocol       = "tcp"
   to_port           = 80
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_cloudfront_ingress" {
+  count             = var.lock ? 1 : 0
+  security_group_id = aws_security_group.alb_sg.id
+  to_port           = 80
+  from_port         = 80
+  ip_protocol       = "tcp"
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront.id
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_sg_egress" {

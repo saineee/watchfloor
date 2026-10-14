@@ -5,3 +5,8 @@ variable "alb_dns_name" {
 variable "name_prefix" {
   type = string
 }
+
+variable "cloudfront_header" {
+  type      = string
+  sensitive = true
+}
