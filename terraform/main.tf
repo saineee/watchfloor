@@ -6,6 +6,7 @@ module "vpc" {
 module "security" {
   source      = "./modules/security"
   vpc_id      = module.vpc.vpc_id
+  lock        = var.enable_cloudfront
   name_prefix = var.name_prefix
 }
 
@@ -22,6 +23,8 @@ module "alb" {
   public_subnet_ids = module.vpc.public_subnet_ids
   vpc_id            = module.vpc.vpc_id
   security_group_id = module.security.alb_sg_id
+  lock              = var.enable_cloudfront
+  header_val        = one(random_password.cloudfront_header[*].result)
 }
 
 module "ecs" {
@@ -64,11 +67,18 @@ resource "aws_ssm_parameter" "grafana_pass" {
   value = random_password.grafana_pass.result
 }
 
+resource "random_password" "cloudfront_header" {
+  length  = 32
+  special = false
+  count   = var.enable_cloudfront ? 1 : 0
+}
+
 module "cloudfront" {
-  count        = var.enable_cloudfront ? 1 : 0
-  source       = "./modules/cloudfront"
-  alb_dns_name = module.alb.alb_dns_name
-  name_prefix  = var.name_prefix
+  count             = var.enable_cloudfront ? 1 : 0
+  source            = "./modules/cloudfront"
+  alb_dns_name      = module.alb.alb_dns_name
+  name_prefix       = var.name_prefix
+  cloudfront_header = one(random_password.cloudfront_header[*].result)
 }
 
 module "cloudmap" {

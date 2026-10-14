@@ -13,3 +13,12 @@ variable "vpc_id" {
 variable "security_group_id" {
   type = string
 }
+
+variable "lock" {
+  type = bool
+}
+
+variable "header_val" {
+  type      = string
+  sensitive = true
+}
