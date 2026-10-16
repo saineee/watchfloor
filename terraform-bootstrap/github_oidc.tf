@@ -227,6 +227,57 @@ resource "aws_iam_role" "github_apply" {
   })
 }
 
+resource "aws_iam_role" "frontend_deploy" {
+  name = "${var.name_prefix}-frontend-deploy"
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:saineee@52940016/watchfloor@1344674191:ref:refs/heads/main"
+        }
+      }
+      Effect = "Allow"
+      Principal = {
+        Federated = data.aws_iam_openid_connect_provider.github.arn
+      }
+    }]
+    Version = "2012-10-17"
+  })
+}
+
+resource "aws_iam_role_policy" "frontend_deploy_policy" {
+  name = "${var.name_prefix}-frontend-deploy-policy"
+  role = aws_iam_role.frontend_deploy.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = "s3:ListBucket"
+        Resource = "arn:aws:s3:::${var.name_prefix}-frontend-${data.aws_caller_identity.current.account_id}"
+        Effect   = "Allow"
+        }, {
+        Action   = ["s3:PutObject", "s3:DeleteObject"]
+        Resource = "arn:aws:s3:::${var.name_prefix}-frontend-${data.aws_caller_identity.current.account_id}/*"
+        Effect   = "Allow"
+        }, {
+        Action   = "cloudfront:ListDistributions"
+        Resource = "*"
+        Effect   = "Allow"
+        }, {
+        Action   = "cloudfront:CreateInvalidation"
+        Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/*"
+        Effect   = "Allow"
+      }
+    ]
+  })
+}
+
+output "frontend_role_arn" {
+  value = aws_iam_role.frontend_deploy.arn
+}
+
 resource "aws_iam_role_policy_attachment" "power_user" {
   role       = aws_iam_role.github_apply.name
   policy_arn = "arn:aws:iam::aws:policy/PowerUserAccess"
