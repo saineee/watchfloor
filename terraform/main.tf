@@ -74,11 +74,14 @@ resource "random_password" "cloudfront_header" {
 }
 
 module "cloudfront" {
-  count             = var.enable_cloudfront ? 1 : 0
-  source            = "./modules/cloudfront"
-  alb_dns_name      = module.alb.alb_dns_name
-  name_prefix       = var.name_prefix
-  cloudfront_header = one(random_password.cloudfront_header[*].result)
+  count                       = var.enable_cloudfront ? 1 : 0
+  source                      = "./modules/cloudfront"
+  alb_dns_name                = module.alb.alb_dns_name
+  name_prefix                 = var.name_prefix
+  cloudfront_header           = one(random_password.cloudfront_header[*].result)
+  bucket_regional_domain_name = data.aws_s3_bucket.frontend.bucket_regional_domain_name
+  bucket_arn                  = data.aws_s3_bucket.frontend.arn
+  bucket_id                   = data.aws_s3_bucket.frontend.id
 }
 
 module "cloudmap" {
