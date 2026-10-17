@@ -70,13 +70,15 @@ function AlertRow({alert, onAlertUpdated}) {
             </td>
             <td>{alert.summary}</td>
             <td className="details-cell">
-                <details>
-                    <summary>More</summary>
-                    <p>Description: {alert.description}</p>
-                    <p>IP: {alert.ip_address}</p>
-                    <p>Location: {alert.location}</p>
-                    <p>Device State: {alert.device_state}</p>
-                    <p>Occurrence Count: {alert.occurrence_count}</p>
+                <details className="alert-details">
+                    <summary>Details</summary>
+                    <div className="details-content">
+                        <p>Description: {alert.description}</p>
+                        <p>IP: {alert.ip_address}</p>
+                        <p>Location: {alert.location}</p>
+                        <p>Device State: {alert.device_state}</p>
+                        <p>Occurrence Count: {alert.occurrence_count}</p>
+                    </div>
                 </details>
             </td>
             <td>
