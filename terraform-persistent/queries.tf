@@ -65,3 +65,25 @@ filter message in ["raced", "race_resolved"]
 | stats count() as n by message, device_name, error_type
 EOF
 }
+
+resource "aws_cloudwatch_query_definition" "errors_by_alert" {
+  name            = "${var.name_prefix}/errors-by-alert"
+  log_group_names = ["/ecs/${var.name_prefix}"]
+
+  query_string = <<EOF
+filter level = "ERROR" and ispresent(alert_id)
+| stats count() as n by alert_id, message
+| sort n desc
+EOF
+}
+
+resource "aws_cloudwatch_query_definition" "errors_over_time" {
+  name            = "${var.name_prefix}/errors-over-time"
+  log_group_names = ["/ecs/${var.name_prefix}"]
+
+  query_string = <<EOF
+filter level = "ERROR"
+| stats count() as n by bin(5m), message
+| sort bin(5m) asc
+EOF
+}
