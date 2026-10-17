@@ -1,0 +1,58 @@
+name: Frontend CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_URL: ""
+
+      - name: Assume Role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_FRONTEND_DEPLOY_ROLE_ARN }}
+          aws-region: 'us-east-1'
+
+      - name: Sync to S3
+        run: |
+          account=$(aws sts get-caller-identity --query Account --output text)
+          aws s3 sync frontend/dist "s3://watchfloor-frontend-$account" --delete
+
+      - name: Invalidate cache
+        run: |
+          CF_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[0].Id" --output text)
+          if [ -z "$CF_ID" ] || [ "$CF_ID" = "None" ]; then
+            echo "No distribution (test mode), skipping invalidation"
+          else
+            aws cloudfront create-invalidation --distribution-id "$CF_ID" --paths "/*"
+          fi
