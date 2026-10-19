@@ -11,6 +11,7 @@ groups:
           severity: page
         annotations:
           summary: Triage error_rate over 50% for past 2 minutes [CRITICAL]
+          runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/triage-fast-burn.md
       - record: slo:triage_errors:ratio_rate30m
         expr: sum(increase(triage_requests_total{outcome="failed"}[30m]))/sum(increase(triage_requests_total{outcome=~"completed|failed"}[30m]))
       - alert: TriageSlowBurn
@@ -20,6 +21,7 @@ groups:
           severity: ticket
         annotations:
           summary: Triage error_rate over 10% for past 30 minutes [MAJOR]
+          runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/triage-slow-burn.md
   - name: availability
     interval: 15s
     rules:
@@ -30,3 +32,4 @@ groups:
           severity: page
         annotations:
           summary: "{{ $labels.job }} is unreachable [CRITICAL]"
+          runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/apidown.md

@@ -20,6 +20,7 @@ tests:
               instance: '10.0.1.5:8000'
             exp_annotations:
               summary: "watchfloor-api is unreachable [CRITICAL]"
+              runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/apidown.md
 
   - name: APIDownAbsentTest
     interval: 15s
@@ -33,3 +34,4 @@ tests:
               job: watchfloor-api
             exp_annotations:
               summary: "watchfloor-api is unreachable [CRITICAL]"
+              runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/apidown.md

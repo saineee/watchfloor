@@ -7,3 +7,4 @@ groups:
           heartbeat: "true"
         annotations:
           summary: "Always firing. Feeds the heartbeat alarm in CloudWatch. If this stops, alerting is down."
+          runbook_url: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/watchdog.md
