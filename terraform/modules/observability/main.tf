@@ -335,7 +335,7 @@ resource "aws_cloudwatch_metric_alarm" "watchdog" {
   alarm_name          = "${var.name_prefix}-deadmans-switch"
   comparison_operator = "LessThanThreshold"
   threshold           = 1
-  alarm_description   = "Hearbeat count per 5 mins with gaps filled as 0. Alarms after 3 consecutive empty windows."
+  alarm_description   = "Heartbeat count per 5 mins with gaps filled as 0. Alarms after 3 consecutive empty windows. Runbook: https://github.com/saineee/watchfloor/blob/main/docs/runbooks/watchdog.md"
   treat_missing_data  = "breaching"
 
   metric_query {
