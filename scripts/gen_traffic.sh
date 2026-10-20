@@ -60,6 +60,16 @@ source "$ENV_FILE"
 : "${WF_PASSWORD:?WF_PASSWORD not set in scripts/.env.traffic}"
 : "${WF_EMAIL:?WF_EMAIL not set in scripts/.env.traffic}"
 API="${API:-http://localhost:8000}"
+
+if [[ ! "$API" =~ ^https?:// ]]; then
+  echo "API must start with https://" >&2
+  exit 1
+fi
+if [[ "$API" =~ ^http:// ]] && [[ ! "$API" =~ ^http://localhost(:[0-9]+)?$ ]]; then
+  echo "API must start with http://localhost or http://localhost:[port], use https:// for CloudFront" >&2
+  exit 1
+fi
+
 COUNT="${COUNT:-20}"
 
 devices=(core-sw-01 edge-fw-02 nas-backup-01 dist-sw-01 dns-srv-02)
