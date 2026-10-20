@@ -65,8 +65,8 @@ if [[ ! "$API" =~ ^https?:// ]]; then
   echo "API must start with https://" >&2
   exit 1
 fi
-if [[ "$API" =~ ^http:// ]] && ! { [[ "$API" =~ ^http://localhost(:[0-9]+)?$ ]] || [[  "$API" =~ ^http://[^/]+\.elb\.amazonaws\.com$ ]]; }; then
-  echo "API must start with http://localhost or http://<Load Balancer>, use https:// for CloudFront" >&2
+if [[ "$API" =~ ^http:// ]] && ! [[ "$API" =~ ^http://localhost(:[0-9]+)?$ ]] ; then
+  echo "API must start with http://localhost, or use https:// for CloudFront. http://<ALB hostname> does not work due to the session cookie being Secure, so it cannot be sent over http." >&2
   exit 1
 fi
 
