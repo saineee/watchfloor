@@ -1,0 +1,26 @@
+name: Observability CI Pipeline
+
+on:
+  pull_request:
+    paths:
+      - 'observability/prometheus/**'
+      - '.github/workflows/observability-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  promtool:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: observability/prometheus
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Check Rules
+        run: docker run --rm -v "$PWD:/work" -w /work --entrypoint promtool prom/prometheus:v3.14.0 check rules rules/*.yml
+
+      - name: Run Rule Tests
+        run: docker run --rm -v "$PWD:/work" -w /work --entrypoint promtool prom/prometheus:v3.14.0 test rules tests/*.yml
