@@ -235,11 +235,11 @@ Run these queries:
 | 0  | About 10 seconds           | 0                      | The endpoint is too slow, or the path is blocked **Refer to hop 3**               |
 | 0  | Fast                       | 0                      | Answered but the response is possibly malformed. Rollback **Refer to mitigation** |
 
-For the exact error, use the targets page (planned, not yet available), then escalate.
+For the exact error, use the targets page, then escalate.
 
-**Planned, not yet available**: Navigate to the repo and go to `/scripts`. In that folder you will find
+**Prometheus Script**: Navigate to the repo and go to `/scripts`. In that folder you will find
 `grafana_tunnel.sh`. Run the script from the directory using `./grafana_tunnel.sh -p` to forward to the Prometheus UI
-for the targets page. Until implemented, escalate.
+for the targets page. Open the link it prints `/targets`, and check the scrape target state (`UP`/`DOWN`), along with the last error.
 
 ## Causes
 
