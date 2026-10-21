@@ -10,3 +10,4 @@ dist/
 !frontend/.env.development
 **/terraform.tfvars
 terraform/tfplan
+*:Zone.Identifier

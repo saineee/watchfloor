@@ -85,7 +85,8 @@ outputs, so the response is validated against a Pydantic schema with a `severity
 Before calling the model, the API hashes the alert's triage fields with SHA-256. The
 prompt also includes `occurrence_count`, but that's left out of the hash on purpose
 (see [Key decisions](#key-decisions)). If the hash matches the last triage, the API
-skips the call, so I don't pay to triage an unchanged alert twice.
+skips the call, so I don't pay to triage an unchanged alert twice. Each triage
+costs about half a cent to a cent on Claude Opus 5 at low effort.
 
 Errors are grouped by whether retrying might help. Rate limits and connection errors
 return a 503, and responses the API can't use return a 502. If triage fails, the
