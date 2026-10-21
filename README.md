@@ -16,6 +16,14 @@ inspired me to build a smaller version of my own, one that handles alert ingesti
 triage, alongside a monitoring stack for the service itself. It's a hands-on way to learn how these components fit
 together and to work through the full software development lifecycle for this kind of service.
 
+## Screenshots
+
+![Alerts Untriaged](docs/screenshots/alerts-untriaged.png)
+
+![Alerts Triaged](docs/screenshots/alerts-triaged.png)
+
+![Grafana Overview](docs/screenshots/grafana-overview.png)
+
 ## Architecture
 
 ![watchfloor runtime architecture](docs/diagrams/architecture.svg)
@@ -36,10 +44,10 @@ don't need any CORS configuration.
 
 The apply workflow has an `enable_cloudfront` checkbox that switches between two setups:
 
-| Mode           | CloudFront | ALB                                                           | Used for                                  |
-|----------------|------------|---------------------------------------------------------------|-------------------------------------------|
-| Test (default) | Off        | Open on port 80                                               | Quick applies, failure testing, runbooks  |
-| Demo           | On         | Only reachable through CloudFront (see [Security](#security)) | Running the full app over HTTPS           |
+| Mode           | CloudFront | ALB                                                           | Used for                                 |
+|----------------|------------|---------------------------------------------------------------|------------------------------------------|
+| Test (default) | Off        | Open on port 80                                               | Quick applies, failure testing, runbooks |
+| Demo           | On         | Only reachable through CloudFront (see [Security](#security)) | Running the full app over HTTPS          |
 
 ### Terraform layout
 
