@@ -8,5 +8,5 @@ __pycache__/
 dist/
 .idea/
 !frontend/.env.development
-terraform-persistent/terraform.tfvars
+**/terraform.tfvars
 terraform/tfplan
