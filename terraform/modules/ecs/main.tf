@@ -42,7 +42,6 @@ resource "aws_iam_role_policy" "exec_role_ssm_policy" {
       Effect = "Allow"
       Resource = [
         var.database_url_ssm_arn,
-        var.secret_key_ssm_arn
       ]
     }]
   })
@@ -65,10 +64,7 @@ resource "aws_ecs_task_definition" "main" {
       name      = "DATABASE_URL"
       valueFrom = var.database_url_ssm_arn
       },
-      {
-        name      = "SECRET_KEY"
-        valueFrom = var.secret_key_ssm_arn
-    }]
+    ]
     environment = [
       {
         name  = "ANTHROPIC_FEDERATION_RULE_ID"

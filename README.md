@@ -358,8 +358,9 @@ Docker Compose runs Postgres, the API, Prometheus, Grafana, and Alertmanager:
 docker compose up --build
 ```
 
-The API needs a `backend/.env` file with at least `SECRET_KEY`, plus either
-`ANTHROPIC_API_KEY` or the workload identity settings. The frontend runs separately:
+Compose sets `DATABASE_URL` for the API. The only other thing it needs is a
+`backend/.env` file with either `ANTHROPIC_API_KEY` or the workload identity settings.
+The frontend runs separately:
 
 ```bash
 cd frontend && npm ci && npm run dev

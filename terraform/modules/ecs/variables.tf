@@ -53,10 +53,6 @@ variable "anthropic_workspace_id" {
   type = string
 }
 
-variable "secret_key_ssm_arn" {
-  type = string
-}
-
 variable "permissions_boundary" {
   type = string
 }

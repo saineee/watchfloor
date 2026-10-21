@@ -87,7 +87,7 @@
         </mxCell>
 
         <!-- Regional services outside the VPC -->
-        <mxCell id="ssm" value="SSM Parameter Store&lt;br&gt;DATABASE_URL, SECRET_KEY,&lt;br&gt;Grafana password" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.systems_manager;" vertex="1" parent="1">
+        <mxCell id="ssm" value="SSM Parameter Store&lt;br&gt;DATABASE_URL,&lt;br&gt;Grafana password" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.systems_manager;" vertex="1" parent="1">
           <mxGeometry x="1310" y="170" width="60" height="60" as="geometry" />
         </mxCell>
         <mxCell id="sts" value="AWS STS&lt;br&gt;web identity token&lt;br&gt;(15 min)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.identity_and_access_management;" vertex="1" parent="1">

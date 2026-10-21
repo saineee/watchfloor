@@ -43,6 +43,5 @@ jobs:
       - run: pytest
         env:
           DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/watchfloordb_test
-          SECRET_KEY: 12839123hljm1h23ljjasdlk12
           ANTHROPIC_API_KEY: ahdsjfh123129831239
           COOKIE_SECURE: false

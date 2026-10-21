@@ -8,7 +8,6 @@ env_file = BASE_DIR / ".env"
 
 class Settings(BaseSettings):
     database_url: str
-    secret_key: str
     cookie_secure: bool = True
     anthropic_api_key: SecretStr | None = None
     anthropic_workspace_id: str | None = None
