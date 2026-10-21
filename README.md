@@ -143,6 +143,11 @@ The deployed API doesn't have an Anthropic API key either. It uses workload iden
 federation: the ECS task gets a short-lived web identity token from AWS and uses that
 to authenticate with the Anthropic API.
 
+Anthropic's billing shows it. My local triages are billed to my dev key. The deployed
+app's triages show up as "No API key", because it doesn't have one.
+
+![Anthropic usage grouped by API key: local dev key vs. no API key from the deployed app](docs/screenshots/anthropic-usage-by-key.png)
+
 ### Permissions boundary
 
 The apply role can only create IAM roles that have the `watchfloor-app-boundary`
