@@ -417,12 +417,12 @@ requests to it go to S3 instead of the API.
 Expired session rows are only deleted when someone tries to use them. Nothing
 removes them on a schedule.
 
-### Hardcoded identifiers
+### Hardcoded account ID
 
-A few config files have account IDs and other identifiers hardcoded, such as the
-Alertmanager SNS topic ARNs and the workload identity settings. None of them are
-secrets, but templating them would make it easier for someone else to deploy the
-project.
+My AWS account ID is still hardcoded in a few places, like the Alertmanager SNS topic
+ARNs and the Terraform state bucket name. It isn't a secret, but templating it would
+make the project easier for someone else to deploy. The workload identity settings
+already come from GitHub repository variables.
 
 ## License
 
